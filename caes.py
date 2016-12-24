@@ -3,6 +3,8 @@ from __future__ import print_function
 # Python common stuff
 import argparse
 import sys
+import importlib
+
 try:
     import cPickle as pickle
 except:
@@ -13,23 +15,30 @@ import numpy as np
 
 from nolearn.lasagne import NeuralNet
 
+checkpoint_base_path = 'data/checkpoints/'
+results_base_path = 'data/results/'
+models_base_path = 'models.'
+
 def import_model(model_name):
 	global model
-	model = __import__(model_name, globals(), locals())
+	model_full_path = models_base_path + model_name
+	#model = __import__(model_full_path, globals(), locals())
+	model = importlib.import_module(model_full_path)
 
-def create_caes(X, model_name):
+def create_caes(X, model_name, n_epochs = 10):
 	import_model(model_name)
 
 	return NeuralNet(
 	    layers = model.get_layers(X, 3),
-	    max_epochs=10,
+	    max_epochs = n_epochs,
 
-	    update=nesterov_momentum,
-	    update_learning_rate=0.01,
-	    update_momentum=0.975,
+	    update = nesterov_momentum,
+	    update_learning_rate = 0.01,
+	    update_momentum = 0.975,
 
-	    regression=True,
-	    verbose=1
+	    regression = True,
+	    verbose = 1,
+	    eval_size = 0,
 	)
 
 def parse_command_line():
@@ -68,14 +77,27 @@ def parse_command_line():
 def print_net(ae):
 	pass
 
-def train(ae):
-	for e in n_epochs:
+def train(ae, print_every, checkpoint_every, checkpoint_dir):
+	current_iteration = 0
+	checkpoint_file = checkpoint_dir + '/chkpnt.pickle'
+
+	for e in range(n_epochs):
+		print("Starting epoch {}".format(e))
 		for b in load_data():
 			# XXX: Do I need to create a copy of `b`?
-			ae.partial_fit(b, b)
+			ae.partial_fit(b[0], b[0])
+			loss = train_history_
 
-checkpoint_base_path = 'data/checkpoints/'
-results_base_path = 'data/results/'
+			if (current_iteration % checkpoint_every):
+				with open(checkpoint_file, 'wb') as f:
+					pickle.dump(ae, f, -1)
+
+			if (current_iteration % print_every):
+				print("Iteration {}, loss: {}".format(
+					current_iteration,
+					loss))
+				print_net(ae)
+
 
 def main():
 	args = parse_command_line()
@@ -84,8 +106,8 @@ def main():
 	batch_size = args.batch_size
 	checkpoint_every = args.checkpoint_every
 	print_every = args.print_every
-	resize_height = resize_height
-	resize_width = resize_width
+	resize_height = args.resize_height
+	resize_width = args.resize_width
 
 	checkpoint_dir = checkpoint_base_path + model_name
 	results_dir = results_base_path + model_name

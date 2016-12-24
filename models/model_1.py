@@ -32,7 +32,7 @@ def get_layers(X, n_channels):
 
 
 	# Notice that, by default, Lasagne already uses a Xavier initialization
-	layers = [
+	return [
 	    (InputLayer, {'shape': (None, X.shape[1], X.shape[2], X.shape[3])}),
 	    (Conv2DLayerFast, {'num_filters': conv_num_filters1,
 				'nonlinearity': sigmoid,
