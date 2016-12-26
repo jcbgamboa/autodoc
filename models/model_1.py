@@ -2,7 +2,6 @@
 # TODO: somehow clean this
 from lasagne.layers import InputLayer, DenseLayer, Upscale2DLayer, ReshapeLayer
 from lasagne.nonlinearities import sigmoid, rectify #, leaky_rectify, tanh
-from lasagne.updates import nesterov_momentum
 try:
     from lasagne.layers.cuda_convnet import Conv2DCCLayer as Conv2DLayerFast
     from lasagne.layers.cuda_convnet import MaxPool2DCCLayer as MaxPool2DLayerFast
@@ -13,7 +12,7 @@ except ImportError:
     print('Using lasagne.layers (slower)')
 
 
-def get_layers(X, n_channels):
+def get_layers(X):
 	conv_num_filters1 = 9
 	conv_num_filters2 = 16
 	filter_size1 = 7
@@ -23,17 +22,17 @@ def get_layers(X, n_channels):
 	pad_in = 'valid'
 	pad_out = 'full'
 
-	middle_size_x = (((X.shape[2] - (filter_size1 - 1))/pool_size) -
+	middle_size_x = (((X[2] - (filter_size1 - 1))/pool_size) -
 				(filter_size2 - 1))/pool_size
-	middle_size_y = (((X.shape[3] - (filter_size1 - 1))/pool_size) -
+	middle_size_y = (((X[3] - (filter_size1 - 1))/pool_size) -
 				(filter_size2 - 1))/pool_size
 
-	encode_size = conv_num_filters2 * middle_size_x * middle_size_y - 16
+	encode_size = 500
 
 
 	# Notice that, by default, Lasagne already uses a Xavier initialization
 	return [
-	    (InputLayer, {'shape': (None, X.shape[1], X.shape[2], X.shape[3])}),
+	    (InputLayer, {'shape': (None, X[1], X[2], X[3])}),
 	    (Conv2DLayerFast, {'num_filters': conv_num_filters1,
 				'nonlinearity': sigmoid,
 				'filter_size': filter_size1, 'pad': pad_in}),
@@ -52,7 +51,7 @@ def get_layers(X, n_channels):
 				'nonlinearity': sigmoid,
 				'filter_size': filter_size2, 'pad': pad_out}),
 	    (Upscale2DLayer, {'scale_factor': pool_size}),
-	    (Conv2DLayerFast, {'num_filters': X.shape[1],
+	    (Conv2DLayerFast, {'num_filters': X[1],
 				'nonlinearity': sigmoid,
 				'filter_size': filter_size1, 'pad': pad_out}),
 	    (ReshapeLayer, {'shape': (([0], -1))}),

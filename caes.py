@@ -4,6 +4,7 @@ from __future__ import print_function
 import argparse
 import sys
 import importlib
+import dataloader as dl
 
 try:
     import cPickle as pickle
@@ -12,6 +13,8 @@ except:
 
 import scipy.io as sio
 import numpy as np
+
+from lasagne.updates import nesterov_momentum
 
 from nolearn.lasagne import NeuralNet
 
@@ -29,7 +32,7 @@ def create_caes(X, model_name, n_epochs = 10):
 	import_model(model_name)
 
 	return NeuralNet(
-	    layers = model.get_layers(X, 3),
+	    layers = model.get_layers(X),
 	    max_epochs = n_epochs,
 
 	    update = nesterov_momentum,
@@ -64,11 +67,11 @@ def parse_command_line():
 			metavar = 'print_every', type = int,
 			help = 'Print status every how many iterations?')
 
-	parser.add_argument('--resize_height', default = 1000,
+	parser.add_argument('--resize_height', default = 500,
 			metavar = 'resize_height', type = int,
 			help = 'Resize images to which height?')
 
-	parser.add_argument('--resize_width', default = 750,
+	parser.add_argument('--resize_width', default = 500,
 			metavar = 'resize_width', type = int,
 			help = 'Resize images to which width?')
 
@@ -77,16 +80,17 @@ def parse_command_line():
 def print_net(ae):
 	pass
 
-def train(ae, print_every, checkpoint_every, checkpoint_dir):
+def train(ae, X, print_every, checkpoint_every, checkpoint_dir, n_epochs):
 	current_iteration = 0
 	checkpoint_file = checkpoint_dir + '/chkpnt.pickle'
-
+	ds = dl.Dataset('tobacco')
 	for e in range(n_epochs):
 		print("Starting epoch {}".format(e))
-		for b in load_data():
+		for b in ds.load_data(batch_size=X[0], resize=[X[2], X[3]]):
 			# XXX: Do I need to create a copy of `b`?
-			ae.partial_fit(b[0], b[0])
-			loss = train_history_
+			b_out = b[0].reshape((b[0].shape[0], -1))
+			ae.partial_fit(b[0], b_out)
+			loss = ae.train_history_
 
 			if (current_iteration % checkpoint_every):
 				with open(checkpoint_file, 'wb') as f:
@@ -116,8 +120,9 @@ def main():
 	print("Setting recursion limit to {rl}".format(rl = recursion_limit))
 	sys.setrecursionlimit(recursion_limit)
 
-	ae = create_caes([batch_size, 3, resize_width, resize_height], model_name)
-	train(ae)
+	X = [batch_size, 1, resize_width, resize_height]
+	ae = create_caes(X, model_name)
+	train(ae, X, print_every, checkpoint_every, checkpoint_dir, n_epochs)
 
 	W1 = ae.layers_[1].W.get_value()
 	b1 = ae.layers_[1].b.get_value()

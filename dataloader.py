@@ -4,7 +4,8 @@ import os, traceback
 import numpy as np
 import random
 from PIL import Image
-
+import matplotlib
+import matplotlib.pyplot as plt
 
 class Dataset :
     def __init__(self, dataset_name):
@@ -99,7 +100,7 @@ class Dataset :
             traceback.print_stack()
 
         lbl_idxs = np.arange(len(self.target))
-        self.one_hot_targets = np.zeros(self.n_target, self.n_target)
+        self.one_hot_targets = np.zeros((self.n_target, self.n_target))
         self.one_hot_targets[np.arange(self.n_target), lbl_idxs] = 1
 
     def one_hot_encode_str_lbl(self, lbl):
@@ -165,7 +166,7 @@ class Dataset :
             img_path, lbl = l.strip().split()
             try :
                 if (count % (batch_size)) == 0 and count != 0 :
-                   yield [img_batch, lbl_batch]
+                   yield [np.array(img_batch), np.array(lbl_batch)]
                 img, one_hot_lbl = self.read_data(img_path, lbl, resize)
                 img_batch.append(img)
                 lbl_batch.append(one_hot_lbl)
@@ -207,7 +208,11 @@ class Dataset :
 
             img_bw = img.convert('L')
             img_bw = np.asarray(img_bw, dtype = np.uint8)
+            #plt.imshow(img_bw, cmap='gray')
+            #plt.show()
             img_bw = img_bw[np.newaxis, :]
+
+
 
         one_hot_lbl = self.one_hot_encode_id_lbl(lbl)
         return img_bw, one_hot_lbl
