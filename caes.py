@@ -3,8 +3,11 @@ from __future__ import print_function
 # Python common stuff
 import argparse
 import sys
+import os
 import importlib
 import dataloader as dl
+
+import models
 
 try:
     import cPickle as pickle
@@ -53,7 +56,7 @@ def parse_command_line():
 		#nargs = '+',
 		help = 'Which network parameters should we use?')
 
-	parser.add_argument('--n_epochs', default = 20,
+	parser.add_argument('--n_epochs', default = 1,
 			metavar = 'n_epochs', type = int,
 			help = 'Number of epochs through the training set.')
 
@@ -101,14 +104,19 @@ def print_net(ae):
 
 def train(ae, X, print_every, checkpoint_every, checkpoint_dir,
 		n_epochs, dataset):
-	current_iteration = 0
 	checkpoint_file = checkpoint_dir + '/chkpnt.pickle'
+	if not os.path.exists(checkpoint_dir):
+		os.makedirs(checkpoint_dir)
+
 	ds = dl.Dataset(dataset)
+
+	current_iteration = 0
 	for e in range(n_epochs):
 		print("Starting epoch {}".format(e))
 		for b in ds.load_data(batch_size=X[0], resize=[X[2], X[3]]):
 			# XXX: Do I need to create a copy of `b`?
 			b_out = b[0].reshape((b[0].shape[0], -1))
+
 			ae.partial_fit(b[0], b_out)
 			loss = ae.train_history_
 
@@ -117,10 +125,11 @@ def train(ae, X, print_every, checkpoint_every, checkpoint_dir,
 					pickle.dump(ae, f, -1)
 
 			if (current_iteration % print_every):
-				print("Iteration {}, loss: {}".format(
-					current_iteration,
-					loss))
+				#print("Iteration {}, loss: {}".format(
+				#	current_iteration,
+				#	loss))
 				print_net(ae)
+			current_iteration += 1
 
 
 def main():
@@ -149,11 +158,7 @@ def main():
 	train(ae, X, print_every, checkpoint_every, checkpoint_dir,
 			n_epochs, dataset)
 
-	W1 = ae.layers_[1].W.get_value()
-	b1 = ae.layers_[1].b.get_value()
-
-	W2 = ae.layers_[3].W.get_value()
-	b2 = ae.layers_[3].b.get_value()
+	weights = models.get_weights(ae)
 
 if __name__ == '__main__':
 	main()

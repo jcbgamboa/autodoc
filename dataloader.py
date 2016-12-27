@@ -162,11 +162,14 @@ class Dataset :
 
         random.shuffle(data_list)
 
-        for count, l in enumerate(data_list) :
+        for count, l in enumerate(data_list):
+        #for count, l in list(enumerate(data_list))[0:128] :
             img_path, lbl = l.strip().split()
             try :
                 if (count % (batch_size)) == 0 and count != 0 :
                    yield [np.array(img_batch), np.array(lbl_batch)]
+                   img_batch = []
+                   lbl_batch = []
                 img, one_hot_lbl = self.read_data(img_path, lbl, resize)
                 img_batch.append(img)
                 lbl_batch.append(one_hot_lbl)
