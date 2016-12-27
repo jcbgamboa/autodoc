@@ -32,6 +32,7 @@ def import_model(model_name):
 	#model = __import__(model_full_path, globals(), locals())
 	model = importlib.import_module(model_full_path)
 
+
 def create_caes(X, model_name, learning_rate, beta1, beta2, n_epochs = 10):
 	import_model(model_name)
 
@@ -48,6 +49,7 @@ def create_caes(X, model_name, learning_rate, beta1, beta2, n_epochs = 10):
 	    verbose = 1,
 	    train_split = TrainSplit(0),
 	)
+
 
 def parse_command_line():
 	parser = argparse.ArgumentParser(
@@ -99,8 +101,10 @@ def parse_command_line():
 
 	return parser.parse_args()
 
+
 def print_net(ae):
 	pass
+
 
 def train(ae, X, print_every, checkpoint_every, checkpoint_dir,
 		n_epochs, dataset):
@@ -132,6 +136,19 @@ def train(ae, X, print_every, checkpoint_every, checkpoint_dir,
 			current_iteration += 1
 
 
+def dump_results(ae, weights, results_dir):
+	if not os.path.exists(results_dir):
+		os.makedirs(results_dir)
+
+	results_file = results_dir + '/model.pickle'
+	with open(results_file, 'wb') as f:
+		pickle.dump(weights, f, -1)
+
+	history_file = results_dir + '/history.pickle'
+	with open(history_file, 'wb') as f:
+		pickle.dump(ae.train_history_, f, -1)
+
+
 def main():
 	args = parse_command_line()
 	model_name = args.model_name
@@ -147,7 +164,7 @@ def main():
 	beta2 = args.beta2
 
 	checkpoint_dir = checkpoint_base_path + model_name
-	results_dir = results_base_path + model_name
+	results_dir = results_base_path + '/' + model_name + '/caes'
 
 	recursion_limit = 10000
 	print("Setting recursion limit to {rl}".format(rl = recursion_limit))
@@ -160,13 +177,8 @@ def main():
 
 	weights = models.get_weights(ae)
 
-	results_file = results_base_path + '/' + model_name + '/caes/model.pickle'
-	with open(results_file, 'wb') as f:
-		pickle.dump(weights, f, -1)
+	dump_results(ae, weights, results_dir)
 
-	history_file = results_base_path + '/' + model_name + '/caes/history.pickle'
-	with open(history_file, 'wb') as f:
-		pickle.dump(ae.train_history_, f, -1)
 
 if __name__ == '__main__':
 	main()
