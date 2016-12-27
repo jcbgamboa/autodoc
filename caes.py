@@ -110,7 +110,7 @@ def train(ae, X, print_every, checkpoint_every, checkpoint_dir,
 
 	ds = dl.Dataset(dataset)
 
-	current_iteration = 0
+	current_iteration = 1
 	for e in range(n_epochs):
 		print("Starting epoch {}".format(e))
 		for b in ds.load_data(batch_size=X[0], resize=[X[2], X[3]]):
@@ -120,14 +120,14 @@ def train(ae, X, print_every, checkpoint_every, checkpoint_dir,
 			ae.partial_fit(b[0], b_out)
 			loss = ae.train_history_
 
-			if (current_iteration % checkpoint_every):
+			if (current_iteration % checkpoint_every == 0):
 				with open(checkpoint_file, 'wb') as f:
 					pickle.dump(ae, f, -1)
 
-			if (current_iteration % print_every):
-				#print("Iteration {}, loss: {}".format(
-				#	current_iteration,
-				#	loss))
+			if (current_iteration % print_every == 0):
+				print("Iteration {}, loss: {}".format(
+					current_iteration,
+					loss))
 				print_net(ae)
 			current_iteration += 1
 
@@ -159,6 +159,14 @@ def main():
 			n_epochs, dataset)
 
 	weights = models.get_weights(ae)
+
+	results_file = results_base_path + '/' + model_name + '/caes/model.pickle'
+	with open(results_file, 'wb') as f:
+		pickle.dump(weights, f, -1)
+
+	history_file = results_base_path + '/' + model_name + '/caes/history.pickle'
+	with open(history_file, 'wb') as f:
+		pickle.dump(ae.train_history_, f, -1)
 
 if __name__ == '__main__':
 	main()
