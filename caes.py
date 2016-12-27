@@ -14,9 +14,9 @@ except:
 import scipy.io as sio
 import numpy as np
 
-from lasagne.updates import nesterov_momentum
+from lasagne.updates import nesterov_momentum, adam
 
-from nolearn.lasagne import NeuralNet
+from nolearn.lasagne import NeuralNet, TrainSplit
 
 checkpoint_base_path = 'data/checkpoints/'
 results_base_path = 'data/results/'
@@ -25,23 +25,25 @@ models_base_path = 'models.'
 def import_model(model_name):
 	global model
 	model_full_path = models_base_path + model_name
+	print (model_full_path)
 	#model = __import__(model_full_path, globals(), locals())
 	model = importlib.import_module(model_full_path)
 
-def create_caes(X, model_name, n_epochs = 10):
+def create_caes(X, model_name, learning_rate, beta1, beta2, n_epochs = 10):
 	import_model(model_name)
 
 	return NeuralNet(
 	    layers = model.get_layers(X),
 	    max_epochs = n_epochs,
 
-	    update = nesterov_momentum,
-	    update_learning_rate = 0.01,
-	    update_momentum = 0.975,
+	    update = adam,
+	    update_learning_rate = learning_rate,
+	    update_beta1 = beta1,
+	    update_beta2 = beta2,
 
 	    regression = True,
 	    verbose = 1,
-	    eval_size = 0,
+	    train_split = TrainSplit(0),
 	)
 
 def parse_command_line():
@@ -67,23 +69,41 @@ def parse_command_line():
 			metavar = 'print_every', type = int,
 			help = 'Print status every how many iterations?')
 
-	parser.add_argument('--resize_height', default = 500,
+	parser.add_argument('--resize_height', default = 244,
 			metavar = 'resize_height', type = int,
 			help = 'Resize images to which height?')
 
-	parser.add_argument('--resize_width', default = 500,
+	parser.add_argument('--resize_width', default = 244,
 			metavar = 'resize_width', type = int,
 			help = 'Resize images to which width?')
+
+	parser.add_argument('--learning_rate', default = 0.00001,
+			metavar = 'learning_rate', type = float,
+			help = "Adam's learning rate.")
+
+	parser.add_argument('--beta1', default = 0.9,
+			metavar = 'beta1', type = float,
+			help = "Adam's second momentum decay.")
+
+	parser.add_argument('--beta2', default = 0.999,
+			metavar = 'beta2', type = float,
+			help = "Adam's first momentum decay.")
+
+	parser.add_argument('--dataset', default = 'tobacco',
+			metavar = 'dataset', type = str,
+			help = 'Name of the training dataset.')
+
 
 	return parser.parse_args()
 
 def print_net(ae):
 	pass
 
-def train(ae, X, print_every, checkpoint_every, checkpoint_dir, n_epochs):
+def train(ae, X, print_every, checkpoint_every, checkpoint_dir,
+		n_epochs, dataset):
 	current_iteration = 0
 	checkpoint_file = checkpoint_dir + '/chkpnt.pickle'
-	ds = dl.Dataset('tobacco')
+	ds = dl.Dataset(dataset)
 	for e in range(n_epochs):
 		print("Starting epoch {}".format(e))
 		for b in ds.load_data(batch_size=X[0], resize=[X[2], X[3]]):
@@ -112,6 +132,10 @@ def main():
 	print_every = args.print_every
 	resize_height = args.resize_height
 	resize_width = args.resize_width
+	learning_rate = args.learning_rate
+	dataset = args.dataset
+	beta1 = args.beta1
+	beta2 = args.beta2
 
 	checkpoint_dir = checkpoint_base_path + model_name
 	results_dir = results_base_path + model_name
@@ -121,8 +145,9 @@ def main():
 	sys.setrecursionlimit(recursion_limit)
 
 	X = [batch_size, 1, resize_width, resize_height]
-	ae = create_caes(X, model_name)
-	train(ae, X, print_every, checkpoint_every, checkpoint_dir, n_epochs)
+	ae = create_caes(X, model_name, learning_rate, beta1, beta2, n_epochs)
+	train(ae, X, print_every, checkpoint_every, checkpoint_dir,
+			n_epochs, dataset)
 
 	W1 = ae.layers_[1].W.get_value()
 	b1 = ae.layers_[1].b.get_value()

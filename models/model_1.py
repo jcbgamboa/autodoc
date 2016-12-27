@@ -28,17 +28,18 @@ def get_layers(X):
 				(filter_size2 - 1))/pool_size
 
 	encode_size = 500
+	non_linearity = rectify
 
 
 	# Notice that, by default, Lasagne already uses a Xavier initialization
 	return [
 	    (InputLayer, {'shape': (None, X[1], X[2], X[3])}),
 	    (Conv2DLayerFast, {'num_filters': conv_num_filters1,
-				'nonlinearity': sigmoid,
+				'nonlinearity': rectify,
 				'filter_size': filter_size1, 'pad': pad_in}),
 	    (MaxPool2DLayerFast, {'pool_size': pool_size}),
 	    (Conv2DLayerFast, {'num_filters': conv_num_filters2,
-				'nonlinearity': sigmoid,
+				'nonlinearity': rectify,
 				'filter_size': filter_size2, 'pad': pad_in}),
 	    (MaxPool2DLayerFast, {'pool_size': pool_size}),
 	    (ReshapeLayer, {'shape': (([0], -1))}),
@@ -48,11 +49,11 @@ def get_layers(X):
 				middle_size_x, middle_size_y))}),
 	    (Upscale2DLayer, {'scale_factor': pool_size}),
 	    (Conv2DLayerFast, {'num_filters': conv_num_filters1,
-				'nonlinearity': sigmoid,
+				'nonlinearity': rectify,
 				'filter_size': filter_size2, 'pad': pad_out}),
 	    (Upscale2DLayer, {'scale_factor': pool_size}),
 	    (Conv2DLayerFast, {'num_filters': X[1],
-				'nonlinearity': sigmoid,
+				'nonlinearity': rectify,
 				'filter_size': filter_size1, 'pad': pad_out}),
 	    (ReshapeLayer, {'shape': (([0], -1))}),
 	]
