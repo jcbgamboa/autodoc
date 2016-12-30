@@ -31,6 +31,7 @@ def import_model(model_name):
 	print (model_full_path)
 	#model = __import__(model_full_path, globals(), locals())
 	model = importlib.import_module(model_full_path)
+	return model
 
 
 def create_caes(X, model_name, learning_rate, beta1, beta2, n_epochs = 10):
@@ -74,11 +75,11 @@ def parse_command_line():
 			metavar = 'print_every', type = int,
 			help = 'Print status every how many iterations?')
 
-	parser.add_argument('--resize_height', default = 244,
+	parser.add_argument('--resize_height', default = 500,
 			metavar = 'resize_height', type = int,
 			help = 'Resize images to which height?')
 
-	parser.add_argument('--resize_width', default = 244,
+	parser.add_argument('--resize_width', default = 500,
 			metavar = 'resize_width', type = int,
 			help = 'Resize images to which width?')
 
@@ -107,13 +108,13 @@ def print_net(ae):
 
 
 def train(ae, X, print_every, checkpoint_every, checkpoint_dir,
-		n_epochs, dataset):
-	checkpoint_file = checkpoint_dir + '/chkpnt.pickle'
+		n_epochs, dataset, model_name):
+	checkpoint_file = os.path.join(checkpoint_dir, 'chkpnt.pickle')
 	if not os.path.exists(checkpoint_dir):
 		os.makedirs(checkpoint_dir)
 
 	ds = dl.Dataset(dataset)
-
+	ds.model = 'caes'
 	current_iteration = 1
 	for e in range(n_epochs):
 		print("Starting epoch {}".format(e))
@@ -140,11 +141,11 @@ def dump_results(ae, weights, results_dir):
 	if not os.path.exists(results_dir):
 		os.makedirs(results_dir)
 
-	results_file = results_dir + '/model.pickle'
+	results_file = os.path.join(results_dir, '/model.pickle')
 	with open(results_file, 'wb') as f:
-		pickle.dump(weights, f, -1)
+		pickle.dump(ae, f, -1)
 
-	history_file = results_dir + '/history.pickle'
+	history_file = os.path.join(results_dir, '/history.pickle')
 	with open(history_file, 'wb') as f:
 		pickle.dump(ae.train_history_, f, -1)
 
@@ -163,8 +164,8 @@ def main():
 	beta1 = args.beta1
 	beta2 = args.beta2
 
-	checkpoint_dir = checkpoint_base_path + model_name
-	results_dir = results_base_path + '/' + model_name + '/caes'
+	checkpoint_dir = os.path.join(checkpoint_base_path, model_name, 'caes')
+	results_dir = os.path.join(results_base_path, model_name, 'caes')
 
 	recursion_limit = 10000
 	print("Setting recursion limit to {rl}".format(rl = recursion_limit))
@@ -173,7 +174,7 @@ def main():
 	X = [batch_size, 1, resize_width, resize_height]
 	ae = create_caes(X, model_name, learning_rate, beta1, beta2, n_epochs)
 	train(ae, X, print_every, checkpoint_every, checkpoint_dir,
-			n_epochs, dataset)
+			n_epochs, dataset, model_name)
 
 	weights = models.get_weights(ae)
 

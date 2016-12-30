@@ -74,6 +74,9 @@ class Dataset :
         always. any one would work. Make sure you check the respective flags
         before use.
         '''
+        self.gen_counter = 0
+        self.data_list = None
+
         self.parent_dir = os.path.join("data/datasets/", dataset_name)
         self.target_file_path = os.path.join(self.parent_dir, 'labels.txt')
         self.data_root = os.path.join(self.parent_dir, 'data')
@@ -102,6 +105,11 @@ class Dataset :
         lbl_idxs = np.arange(len(self.target))
         self.one_hot_targets = np.zeros((self.n_target, self.n_target))
         self.one_hot_targets[np.arange(self.n_target), lbl_idxs] = 1
+
+        self.batch_size = 64
+        self.resize = [750, 1000]
+        self.mode = 'train'
+        self.model = 'caes'
 
     def one_hot_encode_str_lbl(self, lbl):
         '''
@@ -147,6 +155,7 @@ class Dataset :
         :param mode: To load train, test or validate data
         :return: [batch_of_images, batch_of_labels]
         '''
+
         img_batch = []
         lbl_batch = []
         data_list = []
@@ -167,7 +176,7 @@ class Dataset :
             img_path, lbl = l.strip().split()
             try :
                 if (count % (batch_size)) == 0 and count != 0 :
-                   yield [np.array(img_batch), np.array(lbl_batch)]
+                   yield (np.array(img_batch), np.array(lbl_batch))
                    img_batch = []
                    lbl_batch = []
                 img, one_hot_lbl = self.read_data(img_path, lbl, resize)
@@ -179,6 +188,54 @@ class Dataset :
                       ' instructions properly and try again.')
                 traceback.print_stack()
                 pass
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        '''
+
+        :return:
+        '''
+
+        img_batch = []
+        lbl_batch = []
+        if self.data_list is None:
+            if self.mode == 'train':
+                with open(self.train_file_path, 'rb') as data_file :
+                    self.data_list = data_file.readlines()
+            elif self.mode == 'test' and self.has_test:
+                with open(self.test_file_path, 'rb') as data_file :
+                    self.data_list = data_file.readlines()
+            elif self.mode == 'validate' and self.has_validate:
+                with open(self.validate_file_path, 'rb') as data_file :
+                    self.data_list = data_file.readlines()
+            random.shuffle(self.data_list)
+
+        if self.gen_counter + self.batch_size > len(self.data_list):
+            self.gen_counter = 0
+
+        #print("gen_counter: {}".format(self.gen_counter))
+
+        batch_file_data = self.data_list[self.gen_counter : self.gen_counter + self.batch_size]
+        for count, l in enumerate(batch_file_data):
+        #for count, l in list(enumerate(data_list))[0:128] :
+            img_path, lbl = l.strip().split()
+            try :
+                img, one_hot_lbl = self.read_data(img_path, lbl, self.resize)
+                img_batch.append(img)
+                lbl_batch.append(one_hot_lbl)
+            except IOError:
+                print('There was an error while yielding a minibatch from the '
+                      'dataset. Please make sure that you have followed the'
+                      ' instructions properly and try again.')
+                traceback.print_stack()
+
+        self.gen_counter += self.batch_size
+        return (np.array(img_batch), np.array(lbl_batch))
+
+    def __next__(self):
+        return self.load_data()
 
     def is_grey_scale(img_path) :
         '''
@@ -213,7 +270,12 @@ class Dataset :
             img_bw = np.asarray(img_bw, dtype = np.uint8)
             #plt.imshow(img_bw, cmap='gray')
             #plt.show()
-            img_bw = img_bw[np.newaxis, :]
+            if self.model is 'caes':
+                img_bw = img_bw[np.newaxis, :]
+            else:
+                img_bw = img_bw[:,:, np.newaxis]
+
+
 
 
 

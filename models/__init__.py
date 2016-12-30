@@ -1,4 +1,3 @@
-
 def get_weights(ae):
 	ret = []
 	for l in ae.layers_.values():

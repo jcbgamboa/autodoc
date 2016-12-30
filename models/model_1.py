@@ -49,8 +49,7 @@ def get_layers(X):
 				'pool_size': pool_size}),
 	    (ReshapeLayer, {'name': 'reshape_1',
 				'shape': (([0], -1))}),
-	    (DenseLayer, {'name': 'mid_dense',
-				'name': 'encode', 'num_units': encode_size}),
+	    (DenseLayer, {'name': 'mid_dense', 'num_units': encode_size}),
 	    (DenseLayer, {'name': 'd_dense',
 				'num_units': conv_num_filters2 *
 					middle_size_x * middle_size_y}),
