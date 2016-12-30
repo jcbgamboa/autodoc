@@ -8,74 +8,126 @@
 # 1) The loss value for each iteration
 # 2) The accuracy on the `test set`
 
-from keras.models import Model, Sequential
+from keras.models import Model, Sequential, load_model
 from keras.layers import Input, Dense, Convolution2D, MaxPooling2D, \
-			Activation, Flatten
-from keras.callbacks import TensorBoard, Callback
+			Activation, Flatten, BatchNormalization
+from keras.callbacks import TensorBoard, Callback, ModelCheckpoint
+from keras.optimizers import Adam
 
 import numpy as np
 import scipy.io as sio
 import sklearn.preprocessing as skp
+import pickle
 
 import matplotlib.pyplot as plt
 
 import argparse
 import sys
+import os
+import time
 
 # For "math.inf", i.e., infinite
 import math
 
-def load_model(pretrained_model_file):
-	premod = sio.loadmat(pretrained_model_file)
+from sklearn.datasets.tests.test_svmlight_format import currdir
 
-	# (I was dumb and didn't make a homogeneous structure for both nets)
-	if 'cdbn_out' in premod.keys():
-		W1 = premod['cdbn_out'][0][0]
-		b1 = premod['cdbn_out'][0][1].squeeze()
-		W2 = premod['cdbn_out'][1][0]
-		b2 = premod['cdbn_out'][1][1].squeeze()
-	elif 'caes_W1' in premod.keys():
-		W1 = np.transpose(premod['caes_W1'], axes = [2, 3, 1, 0])
-		W2 = np.transpose(premod['caes_W2'], axes = [2, 3, 1, 0])
-		b1 = premod['caes_b1'].squeeze()
-		b2 = premod['caes_b2'].squeeze()
-	else:
-		print("WARN: unrecognized pretrained model format.")
-		return None
+import dataloader as dl
 
-	print('W1.shape: {}'.format(W1.shape))
+from caes import import_model
 
-	ret = {'W1': W1, 'W2': W2, 'b1': b1, 'b2': b2}
-	return ret
+models_base_path = 'models/'
+results_base_path = 'data/results/'
+checkpoint_base_path = 'data/checkpoints/'
 
-def create_cnn(pretrained_model_file = None,
-		data_shape = (60000, 28, 28, 1),
-		activation = 'sigmoid'):
+def insert_econv2D(layer, weights = None):
+	return Convolution2D(layer[1]['num_filters'],
+			layer[1]['filter_size'],
+			layer[1]['filter_size'],
+			border_mode = layer[1]['pad'],
+			weights = (np.transpose(weights[0], axes = [2, 3, 1, 0]),
+					   weights[1]),
+			activation = layer[1]['nonlinearity'])
+
+def insert_maxpool2D(layer, weights = None):
+	return MaxPooling2D((layer[1]['pool_size'], layer[1]['pool_size']),
+			border_mode = 'same')
+
+def insert_batchnorm(layer, weights = None):
+	return BatchNormalization()
+
+def nolearn_convert_to_keras(nolearn_model, X, weights,
+				n_classes, activation,
+				learning_rate, beta1, beta2):
+	switcher = {
+		'e_conv2D'  :  insert_econv2D,
+		'maxpool2D' :  insert_maxpool2D,
+		#'reshape'   :  insert_reshape,
+		'batchnorm' :  insert_batchnorm,
+	}
+
+	net = []
+	input_net = []
+	curr_w = 0
+	for i, l in enumerate(nolearn_model):
+		if (l[1]['name'].startswith('mid_')):
+			break
+
+		if (l[1]['name'] == 'input'):
+			if (i != 0):
+				raise Exception("The first layer should be "
+						"an input layer.")
+			net = input_net = Input(shape = (X[2],
+						X[3],
+						X[1]))
+
+		for key in switcher.keys():
+			if (key in l[1]['name']):
+
+				w = None
+				if curr_w < len(weights):
+					w = weights[curr_w]
+
+				net = switcher[key](l, w)(net)
+				if key.startswith('e_conv'):
+					curr_w += 1
+				break
+
+	net = Flatten()(net)
+	net = Dense(n_classes, activation = activation)(net)
+	#net = Activation('softmax')(net)
+	adam = Adam(lr=learning_rate, beta_1=beta1, beta_2=beta2,
+			epsilon=1e-08, decay=0.0)
+
+	return Model(input = input_net, output = net), adam
+
+def create_cnn(n_classes,
+		batch_size, width, height,
+		model_name = None,
+		activation = 'sigmoid',
+		learning_rate = 0.00001, beta1 = 0.9, beta2 = 0.999):
 	# Loads weights from other models
-	pm = None
-	if(pretrained_model_file is not None):
-		pm = load_model(pretrained_model_file)
+	if(model_name is None):
+		raise ValueError('Pretrained model not passed.')
 
-	input_img = Input(shape=(data_shape[1], data_shape[2], data_shape[3]))
-	# Defines the CNN architecture (based on the weights?)
-	x = Convolution2D(9, 7, 7, border_mode = 'valid',
-		weights = None if pm is None else (pm['W1'], pm['b1']),
-				activation = activation)(input_img)
-	x = MaxPooling2D((2, 2), border_mode = 'same')(x)
+	model = import_model(model_name)
+	X = [batch_size, 1, width, height]
+	pretrained_model_file = os.path.join(results_base_path,
+						model_name,
+						'caes/model.pickle')
 
-	x = Convolution2D(16, 6, 6, border_mode = 'valid',
-		weights = None if pm is None else (pm['W2'], pm['b2']),
-				activation = activation)(x)
-	x = MaxPooling2D((2, 2), border_mode = 'same')(x)
+	# FIXME: Change `weights =` into `ae =` in the following line.
+	#	Then, in the call to `nolearn_convert_to_keras()`, change
+	#	the `weights` parameter into `get_weights(ae)`.
 
-	x = Flatten()(x)
-	x = Dense(10, activation = activation)(x)
-	x = Activation('softmax')(x)
+	#ae = pickle.load(open(pretrained_model_file, "rb"))
+	weights = pickle.load(open(pretrained_model_file, "rb"))
 
-	#sgd = SGD(lr=0.1, decay=1e-6, momentum=0.9, nesterov=True)
-	#model.compile(loss='categorical_crossentropy', optimizer=sgd)u
 
-	return Model(input = input_img, output = x)
+	#nolearn_convert_to_keras(get_layers(), get_weights(ae),
+	return nolearn_convert_to_keras(model.get_layers(X), X, weights,
+					n_classes, activation,
+					learning_rate,
+					beta1, beta2)
 
 def label_binarize(trainL, testL):
 	binarizer = skp.LabelBinarizer(0, 1, False)
@@ -95,32 +147,6 @@ class LossHistory(Callback):
 		self.losses.append(logs.get('loss'))
 		self.accuracy.append(logs.get('acc'))
 		self.one_minus_accuracy.append(1 - logs.get('acc'))
-
-def load_dataset(in_file, normalize = False, reduce_dataset_to = 0):
-	dataset = sio.loadmat(in_file)
-
-	if (reduce_dataset_to > dataset['train_data'].shape[3]):
-		print("reduce_dataset_to's value is bigger than dataset size")
-		sys.exit()
-
-	train_data = dataset['train_data']
-	trainL = dataset['trainL']
-	testL = dataset['testL']
-	if (reduce_dataset_to > 0):
-		train_data = train_data[:, :, :, 0:reduce_dataset_to]
-		trainL = trainL[0:reduce_dataset_to]
-
-	# Transposing stuff only because I am using Keras+Tensorflow
-	train_data = np.transpose(train_data, axes = (3, 0, 1, 2))
-	test_data  = np.transpose(dataset['test_data'], axes = (3, 0, 1, 2))
-
-	if (normalize):
-		train_data = train_data / 256.0
-		test_data  = test_data  / 256.0
-
-	trainL, testL = label_binarize(trainL, testL)
-
-	return (train_data, trainL, test_data, testL)
 
 def output_results(pred, testL, batch_loss_hist, h, out_folder):
 	per_batch_metrics = zip(batch_loss_hist.losses,
@@ -152,34 +178,81 @@ def output_results(pred, testL, batch_loss_hist, h, out_folder):
 
 def main():
 	args = parse_command_line()
-	pretrained_model_file = args.pretrained_model
-	in_file = args.in_file
-	out_folder = args.out_folder
-	reduce_dataset_to = args.reduce_dataset_to
-	normalize = args.normalize
-	use_relu = args.use_relu
+	model_name = args.model_name
 	n_epochs = args.n_epochs
+	batch_size = args.batch_size
+	resize_height = args.resize_height
+	resize_width = args.resize_width
+	learning_rate = args.learning_rate
+	beta1 = args.beta1
+	beta2 = args.beta2
+	dataset = args.dataset
+	activation = args.activation
 
-	(train_data, trainL, test_data, testL) = load_dataset(in_file,
-						normalize, reduce_dataset_to)
+	ds = dl.Dataset(dataset)
+	#output = next(ds)
+	#print("Output: {}".format(output))
+	#sys.exit()
 
-	activation = 'sigmoid' if not use_relu else 'relu'
-	model = create_cnn(pretrained_model_file, train_data.shape, activation)
-	model.compile(optimizer = 'adam',
+	n_classes = ds.n_target
+
+	#(train_data, trainL, test_data, testL) = load_dataset(in_file,
+	#					normalize, reduce_dataset_to)
+
+	model, optimizer = create_cnn(n_classes, batch_size,
+					resize_width, resize_height,
+					model_name, activation,
+					learning_rate, beta1, beta2)
+
+	model.compile(optimizer = optimizer,
 			loss = 'categorical_crossentropy',
 			metrics = ['accuracy', 'categorical_crossentropy'])
 
+	results_dir = os.path.join(results_base_path, model_name, 'cnn')
+	if not os.path.exists(results_dir):
+		os.makedirs(results_dir)
+
+	checkpoint_dir = os.path.join(checkpoint_base_path, model_name, 'cnn')
+	if not os.path.exists(checkpoint_dir):
+		os.makedirs(checkpoint_dir)
+
+
+	checkpoint_file = os.path.join(results_dir , 'model.h5')
+	checkpointer = ModelCheckpoint(filepath = checkpoint_file,
+					verbose = 1, save_best_only = True)
 	batch_loss_hist = LossHistory()
-	h = model.fit(train_data, trainL,
+
+	ds.batch_size = batch_size
+	ds.resize = [resize_width, resize_height]
+
+	if os.path.exists(checkpoint_file):
+		model = load_model(checkpoint_file)
+
+	h = model.fit_generator(ds,
+		samples_per_epoch = 3482,
 		nb_epoch = n_epochs,
-		batch_size = 64,
-		callbacks = [TensorBoard(log_dir='./caes_keras_results'),
+		callbacks = [TensorBoard(log_dir = checkpoint_dir,
+					histogram_freq = 500,
+					write_graph = True,
+					write_images = True),
+				#checkpointer,
 				batch_loss_hist])
 
-	# Now I want to record the loss on the test set
-	pred = model.predict(test_data)
+	model.save(checkpoint_file)
 
-	accuracy = output_results(pred, testL, batch_loss_hist, h, out_folder)
+	test_ds = dl.Dataset('tobacco')
+	test_ds.batch_size = batch_size
+	test_ds.resize = [resize_width, resize_height]
+	# Now I want to record the loss on the test set
+
+	for d in test_ds:
+		if test_ds.gen_counter > 2000:
+			break
+
+		pred = model.predict(d[0], batch_size = batch_size)
+		accuracy = output_results(pred, d[1], batch_loss_hist,
+						h, results_dir)
+
 	print("accuracy: {}".format(accuracy))
 	#print(batch_loss_hist.losses)
 	#plt.plot(batch_loss_hist.losses)
@@ -190,27 +263,46 @@ def parse_command_line():
 	# TODO: add better description
 	description = 'Simple CNN.'
 	parser = argparse.ArgumentParser(description = description)
-	parser.add_argument('--pretrained_model',
-			metavar = 'pretrained_model', type = str,
-			help = 'Pretrained weights to be used in CNN. ' +
-				'Random initialization is used if left empty.')
-	parser.add_argument('in_file', metavar = 'in_file', type = str,
-			help = 'File with the dataset to be learnt.')
-	parser.add_argument('out_folder', metavar = 'output_folder', type = str,
-			help = 'Folder where results should be put.')
-	parser.add_argument('--reduce_dataset_to', default = 0,
-			metavar = 'reduce_dataset_to', type = int,
-			help = 'Reduces the size of the dataset to the number' +
-				'passed as parameter.')
-	parser.add_argument('--normalize', dest = 'normalize',
-			action='store_true',
-			help = 'Rescale the data into the interval [0, 1].')
-	parser.add_argument('--use_relu', dest = 'use_relu',
-			action='store_true',
-			help = 'Use ReLU activations instead of sigmoid.')
+
+	parser.add_argument('model_name', metavar = 'model_name', type = str,
+			help = 'Which network parameters should we use?')
+
 	parser.add_argument('--n_epochs', default = 1,
 			metavar = 'n_epochs', type = int,
 			help = 'Number of epochs through the training set.')
+
+	parser.add_argument('--batch_size', default = 64,
+			metavar = 'batch_size', type = int,
+			help = 'Size of the training batch.')
+
+	parser.add_argument('--resize_height', default = 500,
+			metavar = 'resize_height', type = int,
+			help = 'Resize images to which height?')
+
+	parser.add_argument('--resize_width', default = 500,
+			metavar = 'resize_width', type = int,
+			help = 'Resize images to which width?')
+
+	parser.add_argument('--learning_rate', default = 0.00001,
+			metavar = 'learning_rate', type = float,
+			help = "Adam's learning rate.")
+
+	parser.add_argument('--beta1', default = 0.9,
+			metavar = 'beta1', type = float,
+			help = "Adam's second momentum decay.")
+
+	parser.add_argument('--beta2', default = 0.999,
+			metavar = 'beta2', type = float,
+			help = "Adam's first momentum decay.")
+
+	parser.add_argument('--dataset', default = 'tobacco',
+			metavar = 'dataset', type = str,
+			help = 'Name of the training dataset.')
+
+	parser.add_argument('--activation', default = 'sigmoid',
+			metavar = 'activation', type = str,
+			help = 'Activation function of the last layer.')
+
 
 	return parser.parse_args()
 
