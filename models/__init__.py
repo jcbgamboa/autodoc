@@ -6,3 +6,6 @@ def get_weights(ae):
 
 	return ret
 
+def get_input_shape(ae):
+	return ae.layers_['input'].shape
+

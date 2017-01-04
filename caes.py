@@ -75,12 +75,12 @@ def parse_command_line():
 			metavar = 'print_every', type = int,
 			help = 'Print status every how many iterations?')
 
-	parser.add_argument('--resize_height', default = 500,
-			metavar = 'resize_height', type = int,
+	parser.add_argument('--rows', default = 500,
+			metavar = 'rows', type = int,
 			help = 'Resize images to which height?')
 
-	parser.add_argument('--resize_width', default = 500,
-			metavar = 'resize_width', type = int,
+	parser.add_argument('--columns', default = 500,
+			metavar = 'columns', type = int,
 			help = 'Resize images to which width?')
 
 	parser.add_argument('--learning_rate', default = 0.00001,
@@ -137,15 +137,15 @@ def train(ae, X, print_every, checkpoint_every, checkpoint_dir,
 			current_iteration += 1
 
 
-def dump_results(ae, weights, results_dir):
+def dump_results(ae, results_dir):
 	if not os.path.exists(results_dir):
 		os.makedirs(results_dir)
 
-	results_file = os.path.join(results_dir, '/model.pickle')
+	results_file = os.path.join(results_dir, 'model.pickle')
 	with open(results_file, 'wb') as f:
 		pickle.dump(ae, f, -1)
 
-	history_file = os.path.join(results_dir, '/history.pickle')
+	history_file = os.path.join(results_dir, 'history.pickle')
 	with open(history_file, 'wb') as f:
 		pickle.dump(ae.train_history_, f, -1)
 
@@ -157,8 +157,8 @@ def main():
 	batch_size = args.batch_size
 	checkpoint_every = args.checkpoint_every
 	print_every = args.print_every
-	resize_height = args.resize_height
-	resize_width = args.resize_width
+	rows = args.rows
+	columns = args.columns
 	learning_rate = args.learning_rate
 	dataset = args.dataset
 	beta1 = args.beta1
@@ -171,14 +171,14 @@ def main():
 	print("Setting recursion limit to {rl}".format(rl = recursion_limit))
 	sys.setrecursionlimit(recursion_limit)
 
-	X = [batch_size, 1, resize_width, resize_height]
+	X = [batch_size, 1, rows, columns]
 	ae = create_caes(X, model_name, learning_rate, beta1, beta2, n_epochs)
 	train(ae, X, print_every, checkpoint_every, checkpoint_dir,
 			n_epochs, dataset, model_name)
 
-	weights = models.get_weights(ae)
+	#weights = models.get_weights(ae)
 
-	dump_results(ae, weights, results_dir)
+	dump_results(ae, results_dir)
 
 
 if __name__ == '__main__':

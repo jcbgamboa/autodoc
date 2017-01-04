@@ -10,7 +10,7 @@
 
 from keras.models import Model, Sequential, load_model
 from keras.layers import Input, Dense, Convolution2D, MaxPooling2D, \
-			Activation, Flatten, BatchNormalization
+			Activation, Flatten, BatchNormalization, Dropout
 from keras.callbacks import TensorBoard, Callback, ModelCheckpoint
 from keras.optimizers import Adam
 
@@ -34,6 +34,7 @@ from sklearn.datasets.tests.test_svmlight_format import currdir
 import dataloader as dl
 
 from caes import import_model
+import models
 
 models_base_path = 'models/'
 results_base_path = 'data/results/'
@@ -61,7 +62,7 @@ def nolearn_convert_to_keras(nolearn_model, X, weights,
 	switcher = {
 		'e_conv2D'  :  insert_econv2D,
 		'maxpool2D' :  insert_maxpool2D,
-		#'reshape'   :  insert_reshape,
+		#'reshape'   :  insert_reshape,ol
 		'batchnorm' :  insert_batchnorm,
 	}
 
@@ -76,9 +77,8 @@ def nolearn_convert_to_keras(nolearn_model, X, weights,
 			if (i != 0):
 				raise Exception("The first layer should be "
 						"an input layer.")
-			net = input_net = Input(shape = (X[2],
-						X[3],
-						X[1]))
+			net = input_net = Input(shape = (X[2], X[3], X[1]))
+			continue
 
 		for key in switcher.keys():
 			if (key in l[1]['name']):
@@ -93,7 +93,13 @@ def nolearn_convert_to_keras(nolearn_model, X, weights,
 				break
 
 	net = Flatten()(net)
-	net = Dense(n_classes, activation = activation)(net)
+	net = Dense(512, activation = activation)(net)
+	net = Dropout(0.5)(net)
+	net = BatchNormalization()(net)
+	net = Dense(1024, activation=activation)(net)
+	net = Dropout(0.5)(net)
+	net = BatchNormalization()(net)
+	net = Dense(n_classes, activation=activation)(net)
 	#net = Activation('softmax')(net)
 	adam = Adam(lr=learning_rate, beta_1=beta1, beta_2=beta2,
 			epsilon=1e-08, decay=0.0)
@@ -101,30 +107,26 @@ def nolearn_convert_to_keras(nolearn_model, X, weights,
 	return Model(input = input_net, output = net), adam
 
 def create_cnn(n_classes,
-		batch_size, width, height,
+		batch_size, rows, columns,
 		model_name = None,
 		activation = 'sigmoid',
 		learning_rate = 0.00001, beta1 = 0.9, beta2 = 0.999):
+
 	# Loads weights from other models
 	if(model_name is None):
 		raise ValueError('Pretrained model not passed.')
 
 	model = import_model(model_name)
-	X = [batch_size, 1, width, height]
+	X = [batch_size, 1, rows, columns]
 	pretrained_model_file = os.path.join(results_base_path,
 						model_name,
 						'caes/model.pickle')
 
-	# FIXME: Change `weights =` into `ae =` in the following line.
-	#	Then, in the call to `nolearn_convert_to_keras()`, change
-	#	the `weights` parameter into `get_weights(ae)`.
+	ae = pickle.load(open(pretrained_model_file, "rb"))
 
-	#ae = pickle.load(open(pretrained_model_file, "rb"))
-	weights = pickle.load(open(pretrained_model_file, "rb"))
-
-
-	#nolearn_convert_to_keras(get_layers(), get_weights(ae),
-	return nolearn_convert_to_keras(model.get_layers(X), X, weights,
+	return nolearn_convert_to_keras(model.get_layers(X),
+					models.get_input_shape(ae),
+					models.get_weights(ae),
 					n_classes, activation,
 					learning_rate,
 					beta1, beta2)
@@ -181,8 +183,8 @@ def main():
 	model_name = args.model_name
 	n_epochs = args.n_epochs
 	batch_size = args.batch_size
-	resize_height = args.resize_height
-	resize_width = args.resize_width
+	rows = args.rows
+	columns= args.columns
 	learning_rate = args.learning_rate
 	beta1 = args.beta1
 	beta2 = args.beta2
@@ -190,6 +192,7 @@ def main():
 	activation = args.activation
 
 	ds = dl.Dataset(dataset)
+	ds.model = 'cnn'
 	#output = next(ds)
 	#print("Output: {}".format(output))
 	#sys.exit()
@@ -200,7 +203,7 @@ def main():
 	#					normalize, reduce_dataset_to)
 
 	model, optimizer = create_cnn(n_classes, batch_size,
-					resize_width, resize_height,
+					rows, columns,
 					model_name, activation,
 					learning_rate, beta1, beta2)
 
@@ -223,7 +226,7 @@ def main():
 	batch_loss_hist = LossHistory()
 
 	ds.batch_size = batch_size
-	ds.resize = [resize_width, resize_height]
+	ds.resize = [rows, columns]
 
 	if os.path.exists(checkpoint_file):
 		model = load_model(checkpoint_file)
@@ -241,8 +244,9 @@ def main():
 	model.save(checkpoint_file)
 
 	test_ds = dl.Dataset('tobacco')
+	test_ds.model = 'cnn'
 	test_ds.batch_size = batch_size
-	test_ds.resize = [resize_width, resize_height]
+	test_ds.resize = [rows, columns]
 	# Now I want to record the loss on the test set
 
 	for d in test_ds:
@@ -275,12 +279,12 @@ def parse_command_line():
 			metavar = 'batch_size', type = int,
 			help = 'Size of the training batch.')
 
-	parser.add_argument('--resize_height', default = 500,
-			metavar = 'resize_height', type = int,
+	parser.add_argument('--rows', default = 500,
+			metavar = 'rows', type = int,
 			help = 'Resize images to which height?')
 
-	parser.add_argument('--resize_width', default = 500,
-			metavar = 'resize_width', type = int,
+	parser.add_argument('--columns', default = 500,
+			metavar = 'columns', type = int,
 			help = 'Resize images to which width?')
 
 	parser.add_argument('--learning_rate', default = 0.00001,

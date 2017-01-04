@@ -107,7 +107,7 @@ class Dataset :
         self.one_hot_targets[np.arange(self.n_target), lbl_idxs] = 1
 
         self.batch_size = 64
-        self.resize = [750, 1000]
+        self.resize = [1000, 750]
         self.mode = 'train'
         self.model = 'caes'
 
@@ -143,7 +143,7 @@ class Dataset :
         idx = int(lbl)
         return self.one_hot_targets[idx]
 
-    def load_data(self, batch_size=64, resize=[750, 1000], mode='train'):
+    def load_data(self, batch_size=64, resize=[1000, 750], mode='train'):
         '''
         This is a generator that yields a minibatch of images in the
         following shape
@@ -264,7 +264,7 @@ class Dataset :
         with open(os.path.join(self.data_root, img_path), 'rb') as img_file :
             img = Image.open(img_file)
             w, h = img.size
-            img = img.resize((resize[0], resize[1]), Image.BICUBIC)
+            img = img.resize((resize[1], resize[0]), Image.BICUBIC)
 
             img_bw = img.convert('L')
             img_bw = np.asarray(img_bw, dtype = np.uint8)
