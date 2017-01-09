@@ -106,25 +106,30 @@ def nolearn_convert_to_keras(nolearn_model, X, weights,
 
 	return Model(input = input_net, output = net), adam
 
-def create_cnn(n_classes,
-		batch_size, rows, columns,
-		model_name = None,
-		activation = 'sigmoid',
-		learning_rate = 0.00001, beta1 = 0.9, beta2 = 0.999):
-
+def load_caes_model(model_name):
 	# Loads weights from other models
 	if(model_name is None):
 		raise ValueError('Pretrained model not passed.')
 
 	model = import_model(model_name)
-	X = [batch_size, 1, rows, columns]
 	pretrained_model_file = os.path.join(results_base_path,
 						model_name,
 						'caes/model.pickle')
 
 	ae = pickle.load(open(pretrained_model_file, "rb"))
+	return model, ae
 
-	return nolearn_convert_to_keras(model.get_layers(X),
+
+
+def create_cnn(n_classes,
+		batch_size, rows, columns,
+		model_name = None,
+		activation = 'sigmoid',
+		learning_rate = 0.00001, beta1 = 0.9, beta2 = 0.999):
+	model, ae = load_caes_model(model_name)
+
+	return nolearn_convert_to_keras(model.get_layers(
+						models.get_input_shape(ae)),
 					models.get_input_shape(ae),
 					models.get_weights(ae),
 					n_classes, activation,
@@ -178,6 +183,16 @@ def output_results(pred, testL, batch_loss_hist, h, out_folder):
 
 	return accuracy
 
+def show_caes_model(batch_size, rows, columns, model_name):
+	model, ae = load_caes_model(model_name)
+
+	print("ae.update_learning_rate: {}".format(ae.update_learning_rate))
+	print("ae.train_split.eval_size: {}".format(ae.train_split.eval_size))
+	print("input size: {}".format(models.get_input_shape(ae)))
+	print("ae.max_epochs: {}".format(ae.max_epochs))
+
+	sys.exit()
+
 def main():
 	args = parse_command_line()
 	model_name = args.model_name
@@ -190,6 +205,10 @@ def main():
 	beta2 = args.beta2
 	dataset = args.dataset
 	activation = args.activation
+
+	show_model = args.show_model
+	if (show_model):
+		show_caes_model(batch_size, rows, columns, model_name)
 
 	ds = dl.Dataset(dataset)
 	ds.model = 'cnn'
@@ -301,6 +320,9 @@ def parse_command_line():
 	parser.add_argument('--activation', default = 'sigmoid',
 			metavar = 'activation', type = str,
 			help = 'Activation function of the last layer.')
+
+	parser.add_argument('--show_model', dest='show_model', action='store_true')
+	parser.set_defaults(show_model=False)
 
 
 	return parser.parse_args()
