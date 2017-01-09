@@ -234,12 +234,7 @@ def main():
 	h = model.fit_generator(ds,
 		samples_per_epoch = 3482,
 		nb_epoch = n_epochs,
-		callbacks = [TensorBoard(log_dir = checkpoint_dir,
-					histogram_freq = 500,
-					write_graph = True,
-					write_images = True),
-				#checkpointer,
-				batch_loss_hist])
+		callbacks = [batch_loss_hist])
 
 	model.save(checkpoint_file)
 
