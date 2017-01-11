@@ -1,71 +1,113 @@
-from __future__ import print_function
-
-# Python common stuff
 import argparse
+import importlib
+
 import sys
 import os
-import importlib
+
 import dataloader as dl
 
-import models
-
-try:
-    import cPickle as pickle
-except:
-    import pickle
-
-import scipy.io as sio
-import numpy as np
-
-from lasagne.updates import nesterov_momentum, adam
-
-from nolearn.lasagne import NeuralNet, TrainSplit
+from keras.models import Model, load_model
 
 checkpoint_base_path = 'data/checkpoints/'
 results_base_path = 'data/results/'
-models_base_path = 'models.'
+networks_base_path = 'networks.'
 
-def import_model(model_name):
-	global model
-	model_full_path = models_base_path + model_name
-	print (model_full_path)
-	#model = __import__(model_full_path, globals(), locals())
-	model = importlib.import_module(model_full_path)
-	return model
+def import_network(network_name):
+	global network_module
+	network_full_path = networks_base_path + network_name
+	print (network_full_path)
+	#network = __import__(network_full_path, globals(), locals())
+	network_module = importlib.import_module(network_full_path)
+	return network_module
+
+def show_caes_network(network_name):
+	print("For now... shows nothing")
+
+def create_caes(network_module):
+	return network_module.get_caes_network()
+
+def train_caes(network_module, network_name, dataset):
+	checkpoint_dir = os.path.join(checkpoint_base_path, network_name,
+					dataset, 'caes')
+	if not os.path.exists(checkpoint_dir):
+		os.makedirs(checkpoint_dir)
+	checkpoint_file = os.path.join(checkpoint_dir, 'chkpnt.pickle')
+
+	caes = None
+	param = None
+	if (os.path.exists(checkpoint_file)):
+		caes = load_model(checkpoint_file)
+	else:
+		input_layer, net, params = create_caes(network_module)
+
+		caes = Model(input_layer, net)
+		caes.compile(optimizer = 'adam',
+			loss = 'mean_squared_error',
+			metrics = ['accuracy'])
+
+	ds_train = dl.Dataset(dataset)
+	ds_train.resize = [params['rows'], params['columns']]
+	ds_train.batch_size = params['batch_size']
+	ds_train.model = 'caes'
+        ds_train.mode = 'train'
+
+	ds_test = dl.Dataset(dataset)
+	ds_test.resize = [params['rows'], params['columns']]
+	ds_test.batch_size = params['batch_size']
+	ds_test.model = 'caes'
+        ds_test.mode = 'validate'
+
+	for epoch in range(params['n_epochs']):
+		print("Starting epoch {}".format(epoch))
+		for b in ds_train:
+			#b_out = b[0].reshape((b[0].shape[0], -1))
+
+			[loss, accuracy] = caes.train_on_batch(b[0], b[0])
+
+		# For now, saving every epoch
+		model.save(os.path.join(checkpoint_dir, 'model.h5'))
+
+		for b in ds_test:
+			b_out = b[0].reshape((b[0].shape[0], -1))
+			[loss, accuracy] = model.test_on_batch(X_val, y_val)
+
+			print('validate loss: ' + str(loss))
+			print('validate accuracy: ' + str(accuracy))
+		
 
 
-def create_caes(X, model_name, learning_rate, beta1, beta2, n_epochs = 10):
-	import_model(model_name)
+def dump_caes(caes):
+	results_dir = os.path.join(results_base_path, model_name,
+					dataset, 'caes')
+	if not os.path.exists(results_dir):
+		os.makedirs(results_dir)
+	results_file = os.path.join(results_dir, 'model.pickle')
 
-	return NeuralNet(
-	    layers = model.get_layers(X),
-	    max_epochs = n_epochs,
+	caes.save(results_file)
 
-	    update = adam,
-	    update_learning_rate = learning_rate,
-	    update_beta1 = beta1,
-	    update_beta2 = beta2,
 
-	    regression = True,
-	    verbose = 1,
-	    train_split = TrainSplit(0),
-	)
+def main():
+	args = parse_command_line()
+
+	show_network = args.show_network
+	if (show_network):
+		show_caes_network(args.network_name)
+		sys.exit()
+
+	# Loads the network module. It has the network parameters
+	network_module = import_network(args.network_name)
+
+	train_caes(network_module, args.network_name, args.dataset)
+
+	dump_caes(caes)
 
 
 def parse_command_line():
 	parser = argparse.ArgumentParser(
 		description='Simple convolutional autoencoder')
-	parser.add_argument('model_name', metavar = 'model_name', type = str,
+	parser.add_argument('network_name', metavar = 'network_name', type = str,
 		#nargs = '+',
 		help = 'Which network parameters should we use?')
-
-	parser.add_argument('--n_epochs', default = 1,
-			metavar = 'n_epochs', type = int,
-			help = 'Number of epochs through the training set.')
-
-	parser.add_argument('--batch_size', default = 64,
-			metavar = 'batch_size', type = int,
-			help = 'Size of the training batch.')
 
 	parser.add_argument('--checkpoint_every', default = 500,
 			metavar = 'checkpoint_every', type = int,
@@ -75,112 +117,19 @@ def parse_command_line():
 			metavar = 'print_every', type = int,
 			help = 'Print status every how many iterations?')
 
-	parser.add_argument('--rows', default = 500,
-			metavar = 'rows', type = int,
-			help = 'Resize images to which height?')
-
-	parser.add_argument('--columns', default = 500,
-			metavar = 'columns', type = int,
-			help = 'Resize images to which width?')
-
-	parser.add_argument('--learning_rate', default = 0.00001,
-			metavar = 'learning_rate', type = float,
-			help = "Adam's learning rate.")
-
-	parser.add_argument('--beta1', default = 0.9,
-			metavar = 'beta1', type = float,
-			help = "Adam's second momentum decay.")
-
-	parser.add_argument('--beta2', default = 0.999,
-			metavar = 'beta2', type = float,
-			help = "Adam's first momentum decay.")
-
 	parser.add_argument('--dataset', default = 'tobacco',
 			metavar = 'dataset', type = str,
 			help = 'Name of the training dataset.')
 
+	parser.add_argument('--show_network', dest='show_network',
+						action='store_true')
+	parser.set_defaults(show_network=False)
 
 	return parser.parse_args()
 
 
-def print_net(ae):
-	pass
-
-
-def train(ae, X, print_every, checkpoint_every, checkpoint_dir,
-		n_epochs, dataset, model_name):
-	checkpoint_file = os.path.join(checkpoint_dir, 'chkpnt.pickle')
-	if not os.path.exists(checkpoint_dir):
-		os.makedirs(checkpoint_dir)
-
-	ds = dl.Dataset(dataset)
-	ds.model = 'caes'
-	current_iteration = 1
-	for e in range(n_epochs):
-		print("Starting epoch {}".format(e))
-		for b in ds.load_data(batch_size=X[0], resize=[X[2], X[3]]):
-			# XXX: Do I need to create a copy of `b`?
-			b_out = b[0].reshape((b[0].shape[0], -1))
-
-			ae.partial_fit(b[0], b_out)
-			loss = ae.train_history_
-
-			if (current_iteration % checkpoint_every == 0):
-				with open(checkpoint_file, 'wb') as f:
-					pickle.dump(ae, f, -1)
-
-			if (current_iteration % print_every == 0):
-				print("Iteration {}, loss: {}".format(
-					current_iteration,
-					loss))
-				print_net(ae)
-			current_iteration += 1
-
-
-def dump_results(ae, results_dir):
-	if not os.path.exists(results_dir):
-		os.makedirs(results_dir)
-
-	results_file = os.path.join(results_dir, 'model.pickle')
-	with open(results_file, 'wb') as f:
-		pickle.dump(ae, f, -1)
-
-	history_file = os.path.join(results_dir, 'history.pickle')
-	with open(history_file, 'wb') as f:
-		pickle.dump(ae.train_history_, f, -1)
-
-
-def main():
-	args = parse_command_line()
-	model_name = args.model_name
-	n_epochs = args.n_epochs
-	batch_size = args.batch_size
-	checkpoint_every = args.checkpoint_every
-	print_every = args.print_every
-	rows = args.rows
-	columns = args.columns
-	learning_rate = args.learning_rate
-	dataset = args.dataset
-	beta1 = args.beta1
-	beta2 = args.beta2
-
-	checkpoint_dir = os.path.join(checkpoint_base_path, model_name, 'caes')
-	results_dir = os.path.join(results_base_path, model_name, 'caes')
-
-	recursion_limit = 10000
-	print("Setting recursion limit to {rl}".format(rl = recursion_limit))
-	sys.setrecursionlimit(recursion_limit)
-
-	X = [batch_size, 1, rows, columns]
-	ae = create_caes(X, model_name, learning_rate, beta1, beta2, n_epochs)
-	train(ae, X, print_every, checkpoint_every, checkpoint_dir,
-			n_epochs, dataset, model_name)
-
-	#weights = models.get_weights(ae)
-
-	dump_results(ae, results_dir)
-
 
 if __name__ == '__main__':
 	main()
+
 

@@ -110,6 +110,7 @@ class Dataset :
         self.resize = [1000, 750]
         self.mode = 'train'
         self.model = 'caes'
+        self.absolute_count = 0
 
     def one_hot_encode_str_lbl(self, lbl):
         '''
@@ -212,16 +213,17 @@ class Dataset :
                     self.data_list = data_file.readlines()
             random.shuffle(self.data_list)
 
+        batch_file_data = self.data_list[self.gen_counter:
+					(self.gen_counter + self.batch_size)]
+
         if self.gen_counter + self.batch_size > len(self.data_list):
             self.gen_counter = 0
 
-        #print("gen_counter: {}".format(self.gen_counter))
-
-        batch_file_data = self.data_list[self.gen_counter : self.gen_counter + self.batch_size]
         for count, l in enumerate(batch_file_data):
         #for count, l in list(enumerate(data_list))[0:128] :
             img_path, lbl = l.strip().split()
             try :
+                self.absolute_count += 1
                 img, one_hot_lbl = self.read_data(img_path, lbl, self.resize)
                 img_batch.append(img)
                 lbl_batch.append(one_hot_lbl)
@@ -264,6 +266,7 @@ class Dataset :
         with open(os.path.join(self.data_root, img_path), 'rb') as img_file :
             img = Image.open(img_file)
             w, h = img.size
+
             img = img.resize((resize[1], resize[0]), Image.BICUBIC)
 
             img_bw = img.convert('L')
@@ -274,10 +277,6 @@ class Dataset :
                 img_bw = img_bw[np.newaxis, :]
             else:
                 img_bw = img_bw[:,:, np.newaxis]
-
-
-
-
 
         one_hot_lbl = self.one_hot_encode_id_lbl(lbl)
         return img_bw, one_hot_lbl
