@@ -62,13 +62,15 @@ def train_caes(network_module, network_name, dataset):
 		for b in ds_train:
 			#b_out = b[0].reshape((b[0].shape[0], -1))
 			[loss, accuracy] = caes.train_on_batch(b[0], b[0])
+			print("Trained a batch. Loss: {}, Accuracy: {}".format(
+				loss, accuracy))
 
 		# For now, saving every epoch
-		model.save(os.path.join(checkpoint_dir, 'model.h5'))
+		caes.save(os.path.join(checkpoint_dir, 'model.h5'))
 
 		for b in ds_test:
 			#b_out = b[0].reshape((b[0].shape[0], -1))
-			#[loss, accuracy] = model.test_on_batch(X_val, y_val)
+			[loss, accuracy] = caes.test_on_batch(b[0], b[0])
 
 			print('validate loss: ' + str(loss))
 			print('validate accuracy: ' + str(accuracy))
