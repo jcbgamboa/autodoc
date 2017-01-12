@@ -29,7 +29,7 @@ def get_cnn_network(model_name):
 def get_caes_network():
 	params = get_cnn_parameters()
 
-	input_layer = Input(name = 'input', shape = (1, 256, 256))
+	input_layer = Input(name = 'input', shape = (256, 256, 1))
 
 	x = Convolution2D(name = 'enc_conv2D_1',
 			nb_filter = 96, nb_row = 7, nb_col = 7,

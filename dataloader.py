@@ -68,7 +68,7 @@ class Dataset :
                                 |__validate.txt
                                 |__labels.txt
                                 |__data/
-                                    |__<any_random_optional_folder>/<data_file>
+                                    |__<any_folder_name>/<data_file>
 
         Remember that train.txt, test.txt are validate.txt are not required
         always. any one would work. Make sure you check the respective flags
@@ -232,12 +232,14 @@ class Dataset :
                       'dataset. Please make sure that you have followed the'
                       ' instructions properly and try again.')
                 traceback.print_stack()
+                sys.exit()
+                pass
 
         self.gen_counter += self.batch_size
         return (np.array(img_batch), np.array(lbl_batch))
 
     def __next__(self):
-        return self.load_data()
+        return self.next()
 
     def is_grey_scale(img_path) :
         '''
@@ -263,7 +265,7 @@ class Dataset :
         :return: image, one_hot_label
         '''
 
-        with open(os.path.join(self.data_root, img_path), 'rb') as img_file :
+        with open(os.path.join(self.data_root, img_path.decode('utf-8')), 'rb') as img_file :
             img = Image.open(img_file)
             w, h = img.size
 
@@ -273,10 +275,10 @@ class Dataset :
             img_bw = np.asarray(img_bw, dtype = np.uint8)
             #plt.imshow(img_bw, cmap='gray')
             #plt.show()
-            if self.model is 'caes':
-                img_bw = img_bw[np.newaxis, :]
-            else:
-                img_bw = img_bw[:,:, np.newaxis]
+            #if self.model is 'caes':
+            #    img_bw = img_bw[np.newaxis, :]
+            #else:
+            img_bw = img_bw[:,:, np.newaxis]
 
         one_hot_lbl = self.one_hot_encode_id_lbl(lbl)
         return img_bw, one_hot_lbl
