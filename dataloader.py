@@ -88,6 +88,10 @@ class Dataset :
         self.has_test = os.path.isfile(self.test_file_path)
         self.has_validate = os.path.isfile(self.validate_file_path)
 
+        print("has_train:", self.has_train)
+        print("has_test:", self.has_test)
+        print("has_validate:", self.has_validate)
+
         try:
             with open(self.target_file_path) as f :
                 self.target = f.readlines()
@@ -144,52 +148,6 @@ class Dataset :
         idx = int(lbl)
         return self.one_hot_targets[idx]
 
-    def load_data(self, batch_size=64, resize=[1000, 750], mode='train'):
-        '''
-        This is a generator that yields a minibatch of images in the
-        following shape
-        [BATCH_SIZE X NUM_CHANNELS X WIDTH X HEIGHT]
-
-        :param batch_size: The desired batch size
-        :param resize: [width X height] this is for resizing the images to a
-                        fixed size.
-        :param mode: To load train, test or validate data
-        :return: [batch_of_images, batch_of_labels]
-        '''
-
-        img_batch = []
-        lbl_batch = []
-        data_list = []
-        if mode == 'train':
-            with open(self.train_file_path, 'rb') as data_file :
-                data_list = data_file.readlines()
-        elif mode == 'test' and self.has_test:
-            with open(self.test_file_path, 'rb') as data_file :
-                data_list = data_file.readlines()
-        elif mode == 'validate' and self.has_validate:
-            with open(self.validate_file_path, 'rb') as data_file :
-                data_list = data_file.readlines()
-
-        random.shuffle(data_list)
-
-        for count, l in enumerate(data_list):
-        #for count, l in list(enumerate(data_list))[0:128] :
-            img_path, lbl = l.strip().split()
-            try :
-                if (count % (batch_size)) == 0 and count != 0 :
-                   yield (np.array(img_batch), np.array(lbl_batch))
-                   img_batch = []
-                   lbl_batch = []
-                img, one_hot_lbl = self.read_data(img_path, lbl, resize)
-                img_batch.append(img)
-                lbl_batch.append(one_hot_lbl)
-            except IOError:
-                print('There was an error while yielding a minibatch from the '
-                      'dataset. Please make sure that you have followed the'
-                      ' instructions properly and try again.')
-                traceback.print_stack()
-                pass
-
     def __iter__(self):
         return self
 
@@ -198,7 +156,6 @@ class Dataset :
 
         :return:
         '''
-
         img_batch = []
         lbl_batch = []
         if self.data_list is None:
@@ -214,10 +171,11 @@ class Dataset :
             random.shuffle(self.data_list)
 
         batch_file_data = self.data_list[self.gen_counter:
-					(self.gen_counter + self.batch_size)]
+                                        (self.gen_counter + self.batch_size)]
 
-        if self.gen_counter + self.batch_size > len(self.data_list):
+        if self.gen_counter > 150:# len(self.data_list):
             self.gen_counter = 0
+            raise StopIteration()
 
         for count, l in enumerate(batch_file_data):
         #for count, l in list(enumerate(data_list))[0:128] :
@@ -233,7 +191,6 @@ class Dataset :
                       ' instructions properly and try again.')
                 traceback.print_stack()
                 sys.exit()
-                pass
 
         self.gen_counter += self.batch_size
         return (np.array(img_batch), np.array(lbl_batch))

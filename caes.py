@@ -60,6 +60,7 @@ def train_caes(network_module, network_name, dataset):
 	for epoch in range(params['n_epochs']):
 		print("Starting epoch {}".format(epoch))
 		for b in ds_train:
+			print('ds_train.gen_counter', ds_train.gen_counter)
 			#b_out = b[0].reshape((b[0].shape[0], -1))
 			[loss, accuracy] = caes.train_on_batch(b[0], b[0])
 			print("Trained a batch. Loss: {}, Accuracy: {}".format(
