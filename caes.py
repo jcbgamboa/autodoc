@@ -85,6 +85,7 @@ def train_caes(network_module, network_name, dataset, checkpoint_every):
 			iteration += 1
 
 		# Saves also by the end of an epoch
+		print("Saving model")
 		caes.save(checkpoint_file)
 
 		# Run on only one batch, to have an idea of how it is
