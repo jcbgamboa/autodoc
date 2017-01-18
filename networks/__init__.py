@@ -1,11 +1,10 @@
-def get_weights(ae):
-	ret = []
-	for l in ae.layers_.values():
-		if (l.name.startswith('e_')):
-			ret.append((l.W.get_value(), l.b.get_value()))
 
-	return ret
+caes_cnn_map = {
+	'model_2_cnn_1': 'model_2',
+	'model_2_cnn_2': 'model_2',
+	'model_2_cnn_3': 'model_2',
+}
 
-def get_input_shape(ae):
-	return ae.layers_['input'].shape
+def get_cnn_network(caes_name):
+	return caes_cnn_map[caes_name]
 
