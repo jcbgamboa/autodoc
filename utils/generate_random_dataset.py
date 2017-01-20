@@ -40,7 +40,12 @@ def main():
 
 	data_dict = get_all_paths_from_dataset(args.dataset)
 	samples = select_n_samples_from_dict(data_dict, args.n_elements)
-	dump_dict_to_file(samples, args.output)
+
+	# The training file has the elements we randomly selected
+	dump_dict_to_file(samples, args.output_train)
+
+	# The rest of the elements go to the test file
+	dump_dict_to_file(data_dict, args.output_test)
 
 def parse_command_line():
 	parser = argparse.ArgumentParser(
@@ -53,8 +58,11 @@ def parse_command_line():
 		help = 'Specify the number of elements to be sampled from' + \
 			'each class.')
 
-	parser.add_argument('output', metavar = 'output', type = str,
-		help = 'Specify the name of the output file.')
+	parser.add_argument('output_train', metavar = 'output_train', type = str,
+		help = 'Specify the name of the output training file.')
+
+	parser.add_argument('output_test', metavar = 'output_test', type = str,
+		help = 'Specify the name of the output test file.')
 
 	return parser.parse_args()
 

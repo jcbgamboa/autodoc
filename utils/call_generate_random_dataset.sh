@@ -5,6 +5,9 @@ for ((i = 0; i < 100; i++)); do
 	RANDN=$(( ( RANDOM % 80 )  + 20 ))
 
 	# Generates subset of tobacco dataset
-	python utils/generate_random_dataset.py data/datasets/tobacco/train.txt \
-		$RANDN data/datasets/tobacco/train_$((i)).txt
+	python utils/generate_random_dataset.py \
+			data/datasets/tobacco/train.txt \
+			$RANDN \
+			data/datasets/tobacco/train_$((i)).txt \
+			data/datasets/tobacco/test_$((i)).txt
 done
