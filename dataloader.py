@@ -173,7 +173,7 @@ class Dataset :
         batch_file_data = self.data_list[self.gen_counter:
                                         (self.gen_counter + self.batch_size)]
 
-        if self.gen_counter > len(self.data_list):
+        if self.gen_counter >= len(self.data_list):
             self.gen_counter = 0
             raise StopIteration()
 
