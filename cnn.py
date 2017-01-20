@@ -14,21 +14,9 @@ from keras.layers import Input, Dense, Convolution2D, MaxPooling2D, \
 from keras.callbacks import TensorBoard, Callback, ModelCheckpoint
 from keras.optimizers import Adam
 
-import numpy as np
-import scipy.io as sio
-import sklearn.preprocessing as skp
-
-import matplotlib.pyplot as plt
-
 import argparse
 import sys
 import os
-import time
-
-# For "math.inf", i.e., infinite
-import math
-
-from sklearn.datasets.tests.test_svmlight_format import currdir
 
 import dataloader as dl
 
@@ -41,19 +29,29 @@ checkpoint_base_path = 'data/checkpoints/'
 def create_cnn(network_module, network_name):
 	return network_module.get_cnn_network(network_name)
 
-def train_cnn(network_module, network_name, dataset, checkpoint_every):
+def train_cnn(network_module, network_name,
+		dataset, checkpoint_every,
+		dataset_index = None,
+		custom_train_file = None,
+		custom_test_file = None):
 	checkpoint_dir = os.path.join(checkpoint_base_path, network_name,
 							dataset, 'cnn')
+	if (dataset_index is not None):
+		checkpoint_dir = os.path.join(checkpoint_base_path,
+					network_name, dataset,
+					'run_' + str(dataset_index), 'cnn')
+
 	if not os.path.exists(checkpoint_dir):
 		os.makedirs(checkpoint_dir)
 	checkpoint_file = os.path.join(checkpoint_dir, 'model.h5')
 
-	ds_train = dl.Dataset(dataset)
+	ds_train = dl.Dataset(dataset,
+			use_custom_train_file = custom_train_file)
 	ds_train.model = 'cnn'
 	ds_train.mode = 'train'
 	n_classes = ds_train.n_target
 
-	ds_test = dl.Dataset(dataset)
+	ds_test = dl.Dataset(dataset, use_custom_test_file = custom_test_file)
 	ds_test.model = 'cnn'
 	ds_test.mode = 'validate'
 	n_classes = ds_test.n_target
@@ -79,7 +77,6 @@ def train_cnn(network_module, network_name, dataset, checkpoint_every):
 		cnn.compile(optimizer = optimizer,
 				loss = 'mean_squared_error',
 				metrics = ['accuracy'])
-
 
 	ds_train.batch_size = params['batch_size']
 	ds_test.batch_size = params['batch_size']
@@ -125,9 +122,13 @@ def train_cnn(network_module, network_name, dataset, checkpoint_every):
 	return cnn
 
 
-def dump_cnn(cnn, network_name, dataset):
+def dump_cnn(cnn, network_name, dataset, dataset_index = None):
 	results_dir = os.path.join(results_base_path, network_name,
-					dataset, 'cnn')
+						dataset, 'cnn')
+	if (dataset_index is not None):
+		results_dir = os.path.join(results_base_path, network_name,
+				dataset, 'run_' + str(dataset_index), 'cnn')
+
 	if not os.path.exists(results_dir):
 		os.makedirs(results_dir)
 	results_file = os.path.join(results_dir, 'model.h5')
@@ -145,15 +146,25 @@ def main():
 	# Loads the network module. It has the network parameters
 	network_module = import_network(args.network_name)
 
-	cnn = train_cnn(network_module, args.network_name,
-			args.dataset, args.checkpoint_every)
+	custom_test_file = None
+	custom_train_file = None
+	dataset_index = None
+	if (args.dataset_index is not None):
+		custom_test_file = 'test_' + str(args.dataset_index) + '.txt'
+		custom_train_file = 'train_' + str(args.dataset_index) + '.txt'
+		dataset_index = args.dataset_index
 
-	dump_cnn(cnn, args.network_name, args.dataset)
+	cnn = train_cnn(network_module, args.network_name,
+			args.dataset, args.checkpoint_every,
+			dataset_index = dataset_index,
+			custom_test_file = custom_test_file,
+			custom_train_file = custom_train_file)
+
+	dump_cnn(cnn, args.network_name, args.dataset, args.dataset_index)
 
 
 def parse_command_line():
-	# TODO: add better description
-	description = 'Simple CNN.'
+	description = 'CNN constructed based on a CAES.'
 	parser = argparse.ArgumentParser(description = description)
 
 	parser.add_argument('network_name', metavar = 'network_name', type = str,
@@ -167,10 +178,24 @@ def parse_command_line():
 			metavar = 'dataset', type = str,
 			help = 'Name of the training dataset.')
 
-	parser.add_argument('--show_network', dest='show_network',
-			action='store_true')
-	parser.set_defaults(show_network=False)
+	parser.add_argument('--dataset_index', default = None,
+			metavar = 'dataset_index', type = int,
+			help = 'This is used to run the same network over' + \
+				'"resamplings" of the dataset')
 
+	#parser.add_argument('--custom_test_file', default = 'tobacco',
+	#		metavar = 'custom_test_file', type = str,
+	#		help = 'Instead of `test.txt`, specify a name for' + \
+	#			'the test file to be used.')
+
+	#parser.add_argument('--custom_train_file', default = 'tobacco',
+	#		metavar = 'custom_train_file', type = str,
+	#		help = 'Instead of `train.txt`, specify a name for' + \
+	#			'the test file to be used.')
+
+	#parser.add_argument('--show_network', dest='show_network',
+	#		action='store_true')
+	#parser.set_defaults(show_network=False)
 
 	return parser.parse_args()
 

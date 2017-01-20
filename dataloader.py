@@ -8,7 +8,10 @@ import matplotlib
 import matplotlib.pyplot as plt
 
 class Dataset :
-    def __init__(self, dataset_name):
+    def __init__(self, dataset_name,
+		use_custom_train_file = None,
+		use_custom_validate_file = None,
+		use_custom_test_file = None):
         '''
         This initializes the dataset object and creates the following variables
         1.  parent_dir: The parent directory of the dataset
@@ -77,12 +80,24 @@ class Dataset :
         self.gen_counter = 0
         self.data_list = None
 
+	train_file_name = 'train.txt'
+	if use_custom_train_file is not None:
+		train_file_name = use_custom_train_file
+
+	validate_file_name = 'validate.txt'
+	if use_custom_validate_file is not None:
+		validate_file_name = use_custom_validate_file
+
+	test_file_name = 'test.txt'
+	if use_custom_test_file is not None:
+		test_file_name = use_custom_test_file
+
         self.parent_dir = os.path.join("data/datasets/", dataset_name)
         self.target_file_path = os.path.join(self.parent_dir, 'labels.txt')
         self.data_root = os.path.join(self.parent_dir, 'data')
-        self.train_file_path = os.path.join(self.parent_dir, 'train.txt')
-        self.test_file_path = os.path.join(self.parent_dir, 'test.txt')
-        self.validate_file_path = os.path.join(self.parent_dir, 'validate.txt')
+        self.train_file_path = os.path.join(self.parent_dir, train_file_name)
+        self.test_file_path = os.path.join(self.parent_dir, test_file_name)
+        self.validate_file_path = os.path.join(self.parent_dir, validate_file_name)
 
         self.has_train = os.path.isfile(self.train_file_path)
         self.has_test = os.path.isfile(self.test_file_path)
