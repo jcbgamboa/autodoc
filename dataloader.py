@@ -237,7 +237,8 @@ class Dataset :
         :return: image, one_hot_label
         '''
 
-        with open(os.path.join(self.data_root, img_path.decode('utf-8')), 'rb') as img_file :
+        with open(os.path.join(self.data_root,
+				img_path.decode('utf-8')), 'rb') as img_file:
             img = Image.open(img_file)
             w, h = img.size
 

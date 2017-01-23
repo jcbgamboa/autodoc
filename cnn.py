@@ -14,6 +14,8 @@ from keras.layers import Input, Dense, Convolution2D, MaxPooling2D, \
 from keras.callbacks import TensorBoard, Callback, ModelCheckpoint
 from keras.optimizers import Adam
 
+import numpy as np
+
 import argparse
 import sys
 import os
@@ -122,7 +124,9 @@ def train_cnn(network_module, network_name,
 	return cnn
 
 
-def dump_cnn(cnn, network_name, dataset, dataset_index = None):
+def dump_cnn(cnn, network_name,
+		dataset, test_data, testL,
+		dataset_index = None):
 	results_dir = os.path.join(results_base_path, network_name,
 						dataset, 'cnn')
 	if (dataset_index is not None):
@@ -134,32 +138,14 @@ def dump_cnn(cnn, network_name, dataset, dataset_index = None):
 	results_file = os.path.join(results_dir, 'model.h5')
 	cnn.save(results_file)
 
-	output_results(cnn, results_dir, dataset)
+	output_results(cnn, results_dir, dataset, test_data, testL)
 
 
-def get_test_data(ds_test):
-	return testL, test_data
-
-def output_results(cnn, results_dir, dataset):
+def output_results(cnn, results_dir, dataset, test_data, testL):
 	accuracy_file = os.path.join(results_dir, 'accuracy.csv')
 	test_metrics_file = os.path.join(results_dir, 'test_metrics.csv')
 
-	# Needed for instantiating the `Dataset` object
-	input_shape = cnn.layers[0].input_shape[1:]
-
-	# TODO: put this in get_test_data, and simply pass the test_data/testL
-	#       to `output_results`.
-	#ds_test = dl.Dataset(dataset, use_custom_test_file = custom_test_file)
-	#ds_test.model = 'cnn'
-	#ds_test.mode = 'test'
-	#ds_test.resize  = [input_shape[0], input_shape[1]]
-	#ds_test.batch_size = params['batch_size']
-	#n_classes = ds_test.n_target
-
-	# We are supposing the `test` data not to be to large
-	#testL, test_data = get_test_data(ds_test)
-
-	pred = model.predict(test_data)
+	pred = cnn.predict(test_data)
 
 	categorical_pred = np.argmax(pred, axis = 1)
 	categorical_testL = np.argmax(testL, axis = 1)
@@ -173,18 +159,36 @@ def output_results(cnn, results_dir, dataset):
 				delimiter = ',', fmt = '%d')
 
 	accuracy = len(categorical_pred[categorical_pred == categorical_testL])
+	print("Accuracy: ", accuracy)
 
 	with open(accuracy_file, 'w') as f:
 		f.write(str(accuracy))
 
 
+def get_test_data(cnn, dataset, custom_test_file = None):
+	# We are supposing the `test` data not to be to large. We will put the
+	# entire thing in the memory.
+
+	# Needed for instantiating the `Dataset` object
+	input_shape = cnn.layers[0].input_shape[1:]
+
+	ds_test = dl.Dataset(dataset, use_custom_test_file = custom_test_file)
+	ds_test.model = 'cnn'
+	ds_test.mode = 'test'
+	ds_test.resize  = [input_shape[0], input_shape[1]]
+	n_classes = ds_test.n_target
+
+	# Probably there is a more efficient way of implementing this
+	[test_data, testL] = next(ds_test)
+	for b in ds_test:
+		test_data = np.vstack((test_data, b[0]))
+		testL = np.vstack((testL, b[1]))
+
+	return test_data, testL
+
+
 def main():
 	args = parse_command_line()
-
-	#show_network = args.show_network
-	#if (show_network):
-	#	show_caes_network(network_name)
-	#	sys.exit()
 
 	# Loads the network module. It has the network parameters
 	network_module = import_network(args.network_name)
@@ -203,7 +207,11 @@ def main():
 			custom_test_file = custom_test_file,
 			custom_train_file = custom_train_file)
 
-	dump_cnn(cnn, args.network_name, args.dataset, args.dataset_index)
+	test_data, testL = get_test_data(cnn, args.dataset, custom_test_file)
+
+	dump_cnn(cnn, args.network_name,
+			args.dataset, test_data,
+			testL, args.dataset_index)
 
 
 def parse_command_line():
