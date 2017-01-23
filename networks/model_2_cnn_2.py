@@ -6,7 +6,7 @@ from . import get_cnn_name, networks_base_path
 
 def get_cnn_parameters():
 	ret = model.get_caes_parameters()
-	ret['n_epochs'] = 1
+	ret['n_epochs'] = 10
 
 	return ret
 
