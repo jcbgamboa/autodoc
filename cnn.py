@@ -134,6 +134,49 @@ def dump_cnn(cnn, network_name, dataset, dataset_index = None):
 	results_file = os.path.join(results_dir, 'model.h5')
 	cnn.save(results_file)
 
+	output_results(cnn, results_dir, dataset)
+
+
+def get_test_data(ds_test):
+	return testL, test_data
+
+def output_results(cnn, results_dir, dataset):
+	accuracy_file = os.path.join(results_dir, 'accuracy.csv')
+	test_metrics_file = os.path.join(results_dir, 'test_metrics.csv')
+
+	# Needed for instantiating the `Dataset` object
+	input_shape = cnn.layers[0].input_shape[1:]
+
+	# TODO: put this in get_test_data, and simply pass the test_data/testL
+	#       to `output_results`.
+	#ds_test = dl.Dataset(dataset, use_custom_test_file = custom_test_file)
+	#ds_test.model = 'cnn'
+	#ds_test.mode = 'test'
+	#ds_test.resize  = [input_shape[0], input_shape[1]]
+	#ds_test.batch_size = params['batch_size']
+	#n_classes = ds_test.n_target
+
+	# We are supposing the `test` data not to be to large
+	#testL, test_data = get_test_data(ds_test)
+
+	pred = model.predict(test_data)
+
+	categorical_pred = np.argmax(pred, axis = 1)
+	categorical_testL = np.argmax(testL, axis = 1)
+	correctly_classified = categorical_pred == categorical_testL
+
+	test_metrics = zip(categorical_pred,
+				categorical_testL,
+				correctly_classified)
+
+	np.savetxt(test_metrics_file, list(test_metrics),
+				delimiter = ',', fmt = '%d')
+
+	accuracy = len(categorical_pred[categorical_pred == categorical_testL])
+
+	with open(accuracy_file, 'w') as f:
+		f.write(str(accuracy))
+
 
 def main():
 	args = parse_command_line()
