@@ -6,7 +6,7 @@ def get_caes_parameters():
 	return {
 		'rows': 256,
 		'columns': 256,
-		'n_epochs': 30,
+		'n_epochs': 25,
 		'batch_size': 64,
 		'learning_rate': 0.0001,
 		'beta1': 0.9,
