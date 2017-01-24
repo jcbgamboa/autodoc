@@ -1,3 +1,6 @@
+import argparse
+import os
+
 import numpy as np
 from sklearn.metrics import confusion_matrix
 import pandas
@@ -24,15 +27,17 @@ def get_accuracies(n_runs, results_path):
 	return accuracy_list
 
 def calculate_final_accuracy(n_runs, results_path):
-	corrects_list = get_accuracies(n_runs, results_path)
+	accuracy_list = get_accuracies(n_runs, results_path)
 
-	assert(len(corrects_list) == len(totals_list) == len(accuracy_list))
+	#assert(len(corrects_list) == len(totals_list) == len(accuracy_list))
 
 	accuracies = np.array(accuracy_list)
 
 	accuracy_mean = accuracies.mean()
 	accuracy_variance = accuracies.var()
 	accuracy_median = np.median(accuracies)
+
+	#print("Accuracies: {}".format(accuracies))
 
 	return accuracy_mean, accuracy_variance, accuracy_median
 
@@ -45,7 +50,7 @@ def get_confusion_matrices(n_runs, results_path):
 		curr_test_metrics_file = os.path.join(dir_path,
 							test_metrics_file_path)
 
-		with open(curr_test_metrics_file, 'r', as f:
+		with open(curr_test_metrics_file, 'r') as f:
 			csv = pandas.read_csv(curr_test_metrics_file,
 							header = None)
 
@@ -56,6 +61,10 @@ def get_confusion_matrices(n_runs, results_path):
 
 def calculate_final_confusion_matrix(n_runs, results_path):
 	confusion_matrices = get_confusion_matrices(n_runs, results_path)
+
+	#print("Confusion Matrices:")
+	#for i in confusion_matrices:
+	#	print(i)
 
 	final_cm = np.array(confusion_matrices)
 
