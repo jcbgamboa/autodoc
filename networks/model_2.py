@@ -78,11 +78,9 @@ def get_cnn_network(network_name):
 
 	# These are CNN specific
 	net = Flatten()(x)
-	net = Dense(512, activation = params['activation'])(net)
-	net = Dropout(0.5)(net)
+	net = Dense(1024, activation = params['activation'])(net)
 	net = BatchNormalization()(net)
-	net = Dense(1024, activation=params['activation'])(net)
-	net = Dropout(0.5)(net)
+	net = Dense(512, activation = params['activation'])(net)
 	net = BatchNormalization()(net)
 
 	# I need to specify what to return here
