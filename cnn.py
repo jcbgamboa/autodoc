@@ -159,10 +159,10 @@ def output_results(cnn, results_dir, dataset, test_data, testL):
 				delimiter = ',', fmt = '%d')
 
 	accuracy = len(categorical_pred[categorical_pred == categorical_testL])
-	print("Accuracy: ", accuracy)
+	print("Accuracy: ", accuracy, "from:", testL.shape[0])
 
 	with open(accuracy_file, 'w') as f:
-		f.write(str(accuracy))
+		f.write(str(accuracy) + ',' + str(testL.shape[0]))
 
 
 def get_test_data(cnn, dataset, custom_test_file = None):
