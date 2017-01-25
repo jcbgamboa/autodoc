@@ -7,6 +7,24 @@ import numpy as np
 
 import dataloader as dl
 
+# TODO: Maybe I can use the following code (from Wikipedia)
+# def online_variance(data):
+#    n = 0
+#    mean = 0.0
+#    M2 = 0.0
+#     
+#    for x in data:
+#        n += 1
+#        delta = x - mean
+#        mean += delta/n
+#        delta2 = x - mean
+#        M2 += delta*delta2
+#
+#    if n < 2:
+#        return float('nan')
+#    else:
+#        return M2 / (n - 1)
+
 def calculate_statistics(ds):
 	# Strongly based on:
 	# http://stackoverflow.com/questions/10365119/mean-value-and-standard-deviation-of-a-very-huge-data-set
@@ -21,6 +39,8 @@ def calculate_statistics(ds):
 		images_sum += curr_batch_sum
 		images_squared_sum += curr_batch_sum ** 2
 		count = b[0].shape
+
+	print("Count:", count)
 
 	images_mean = images_sum / len(ds.data_list)
 	images_var  = np.sqrt((images_squared_sum / len(ds.data_list) -
