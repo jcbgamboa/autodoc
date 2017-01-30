@@ -80,17 +80,17 @@ class Dataset :
         self.gen_counter = 0
         self.data_list = None
 
-	train_file_name = 'train.txt'
-	if use_custom_train_file is not None:
-		train_file_name = use_custom_train_file
+        train_file_name = 'train.txt'
+        if use_custom_train_file is not None:
+            train_file_name = use_custom_train_file
 
-	validate_file_name = 'validate.txt'
-	if use_custom_validate_file is not None:
-		validate_file_name = use_custom_validate_file
+        validate_file_name = 'validate.txt'
+        if use_custom_validate_file is not None:
+            validate_file_name = use_custom_validate_file
 
-	test_file_name = 'test.txt'
-	if use_custom_test_file is not None:
-		test_file_name = use_custom_test_file
+        test_file_name = 'test.txt'
+        if use_custom_test_file is not None:
+            test_file_name = use_custom_test_file
 
         self.parent_dir = os.path.join("data/datasets/", dataset_name)
         self.target_file_path = os.path.join(self.parent_dir, 'labels.txt')
@@ -102,6 +102,8 @@ class Dataset :
         self.has_train = os.path.isfile(self.train_file_path)
         self.has_test = os.path.isfile(self.test_file_path)
         self.has_validate = os.path.isfile(self.validate_file_path)
+
+        self.mean_img = None
 
         print("has_train:", self.has_train)
         print("has_test:", self.has_test)
@@ -166,11 +168,25 @@ class Dataset :
     def __iter__(self):
         return self
 
+    def load_mean_image(self):
+        if self.mode == 'train':
+            self.mean_file_name = 'train_mean.tiff'
+        if self.mode == 'test':
+            self.mean_file_name = 'test_mean.tiff'
+        if self.mode == 'validate':
+            self.mean_file_name = 'validate_mean.tiff'
+
+        self.mean_file_path = os.path.join(self.parent_dir, self.mean_file_name)
+        self.mean_img = Image.open(self.mean_file_path)
+
     def next(self):
         '''
 
         :return:
         '''
+        if (self.mean_img is None):
+            self.load_mean_image()
+
         img_batch = []
         lbl_batch = []
         if self.data_list is None:
@@ -198,6 +214,13 @@ class Dataset :
             try :
                 self.absolute_count += 1
                 img, one_hot_lbl = self.read_data(img_path, lbl, self.resize)
+                if (self.mean_img is not None):
+                    # It appears `numpy` will cast the `uint8` into something
+                    # else and not allow values to overflow (which would be
+                    img = img[:,:,0] - self.mean_img
+
+                    # XXX: This hack will only work for monochromatic images
+                    img = img.reshape([self.resize[0], self.resize[1], 1])
                 img_batch.append(img)
                 lbl_batch.append(one_hot_lbl)
             except IOError:

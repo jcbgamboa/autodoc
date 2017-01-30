@@ -29,6 +29,7 @@ results_base_path = 'data/results/'
 checkpoint_base_path = 'data/checkpoints/'
 
 def create_cnn(network_module, network_name):
+	print ("network_name", network_name)
 	return network_module.get_cnn_network(network_name)
 
 def train_cnn(network_module, network_name,
@@ -69,7 +70,9 @@ def train_cnn(network_module, network_name,
 
 		# Add the last layer here because this is dependent on the
 		# number of classes (that we only know from `ds_train`)
-		net = Dense(n_classes, activation=params['activation'])(net)
+		#
+		# We need a Softmax activation here: this is the last layer
+		net = Dense(n_classes, activation = 'softmax')(net)
 		cnn = Model(input_layer, net)
 
 		optimizer = Adam(lr = params['learning_rate'],
@@ -77,7 +80,7 @@ def train_cnn(network_module, network_name,
 				beta_2 = params['beta2'])
 
 		cnn.compile(optimizer = optimizer,
-				loss = 'mean_squared_error',
+				loss = 'categorical_crossentropy',
 				metrics = ['accuracy'])
 
 	ds_train.batch_size = params['batch_size']
