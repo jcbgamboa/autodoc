@@ -6,7 +6,7 @@ from . import get_cnn_name, networks_base_path
 
 def get_cnn_parameters():
 	ret = model.get_caes_parameters()
-	ret['n_epochs'] = 1
+	ret['n_epochs'] = 100
 
 	return ret
 
@@ -20,8 +20,7 @@ def get_cnn_network(caes_net_name):
 	caes_name = os.path.join(networks_base_path,
 			cnn_name, 'rvl-cdip/caes/model.h5')
 
-	input_layer, net, params = model.get_cnn_network(caes_name,
-						with_dropout = True)
+	input_layer, net, params = model.get_cnn_network(caes_name)
 	params = get_cnn_parameters()
 
 	return input_layer, net, params

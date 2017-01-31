@@ -132,7 +132,7 @@ def get_caes_network():
 			border_mode = 'same',
 			subsample = (1, 1))(x)
 
-	encoded = BatchNormalization(name = 'enc_batchNorm_3')(x)
+	x = BatchNormalization(name = 'enc_batchNorm_3')(x)
 
 	x = Convolution2D(name = 'enc_conv2D_4',
 			nb_filter = 256, nb_row = 3, nb_col = 3,
@@ -140,7 +140,7 @@ def get_caes_network():
 			border_mode = 'same',
 			subsample = (1, 1))(x)
 
-	encoded = BatchNormalization(name = 'enc_batchNorm_4')(x)
+	x = BatchNormalization(name = 'enc_batchNorm_4')(x)
 
 	x = MaxPooling2D(name = 'enc_maxPool3',
 			pool_size = (2, 2),

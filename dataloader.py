@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 
 class Dataset :
     def __init__(self, dataset_name,
+		use_mean_image = True,
 		use_custom_train_file = None,
 		use_custom_validate_file = None,
 		use_custom_test_file = None):
@@ -79,6 +80,7 @@ class Dataset :
         '''
         self.gen_counter = 0
         self.data_list = None
+	self.use_mean_image = use_mean_image
 
         train_file_name = 'train.txt'
         if use_custom_train_file is not None:
@@ -179,12 +181,15 @@ class Dataset :
         self.mean_file_path = os.path.join(self.parent_dir, self.mean_file_name)
         self.mean_img = Image.open(self.mean_file_path)
 
+	if (self.mean_img is None):
+		raise ValueError("Couldn't open dataset's mean image.")
+
     def next(self):
         '''
 
         :return:
         '''
-        if (self.mean_img is None):
+        if (self.mean_img is None and self.use_mean_image):
             self.load_mean_image()
 
         img_batch = []

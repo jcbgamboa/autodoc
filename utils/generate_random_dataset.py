@@ -1,6 +1,8 @@
 import random
 import argparse
 
+import math
+
 def get_all_paths_from_dataset(file_name):
 	with open(file_name, 'r') as data_file :
 		files_list = data_file.readlines()
@@ -28,6 +30,35 @@ def select_n_samples_from_dict(data_dict, n):
 
 	return ret
 
+def partition_dict_proportionally(data_dict, proportion = 0.2):
+	# `proportion` is expected to be a number between 0 and 1, and
+	# represents how much of the `data_dict` should be transferred to the
+	# new dictionary
+	#
+	# It is not clear how this partition should happen: if it should take
+	# proportionally 20%/80% for each one of the lists in `data_dict`, or
+	# if it should simply randomly choose any elements of any list (not
+	# caring if the sizes of the lists will be proportional).
+	#
+	# Here, we partition each list proportionally (because it seems more
+	# reasonable).
+	#
+	# TODO: This is VERY similar to `select_n_samples_from_dict()`.
+
+	ret = {}
+	for lbl in data_dict.keys():
+		elems_list = data_dict[lbl]
+
+		# I need the cast to `int` because `math.ceil()` returns float
+		target = int(math.ceil(len(elems_list) * proportion))
+		ret[lbl] = []
+		for i in range(target):
+			sample = random.choice(elems_list)
+			ret[lbl].append(sample)
+			elems_list.remove(sample)
+
+	return ret
+
 def dump_dict_to_file(data_dict, file_name):
 	with open(file_name, 'w') as outfile:
 		for lbl in data_dict.keys():
@@ -39,13 +70,17 @@ def main():
 	args = parse_command_line()
 
 	data_dict = get_all_paths_from_dataset(args.dataset)
-	samples = select_n_samples_from_dict(data_dict, args.n_elements)
+	train = select_n_samples_from_dict(data_dict, args.n_elements)
 
-	# The training file has the elements we randomly selected
-	dump_dict_to_file(samples, args.output_train)
-
-	# The rest of the elements go to the test file
+	# The test set is composed by the elements we didn't select
 	dump_dict_to_file(data_dict, args.output_test)
+
+	# The selected elements are further divided into `train` and `validate`
+	# in a 80% / 20% proportion (respectively)
+	validate = partition_dict_proportionally(train, 0.2)
+
+	dump_dict_to_file(validate, args.output_validate)
+	dump_dict_to_file(train, args.output_train)
 
 def parse_command_line():
 	parser = argparse.ArgumentParser(
@@ -60,6 +95,10 @@ def parse_command_line():
 
 	parser.add_argument('output_train', metavar = 'output_train', type = str,
 		help = 'Specify the name of the output training file.')
+
+	parser.add_argument('output_validate', metavar = 'output_validate',
+		type = str,
+		help = 'Specify the name of the output validate file.')
 
 	parser.add_argument('output_test', metavar = 'output_test', type = str,
 		help = 'Specify the name of the output test file.')

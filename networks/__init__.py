@@ -3,17 +3,11 @@ import os
 
 
 caes_cnn_map = {
-	'model_2_cnn_1': 'model_2',
-	'model_2_cnn_2': 'model_2',
-	'model_2_cnn_3': 'model_2',
+	'model_2_cnn': 'model_2',
 
-	'model_5_cnn_1': 'model_5',
-	'model_5_cnn_2': 'model_5',
-	'model_5_cnn_3': 'model_5',
+	'model_5_cnn': 'model_5',
 
-	'model_5_cnn_1_dropout': 'model_5',
-	'model_5_cnn_2_dropout': 'model_5',
-	'model_5_cnn_3_dropout': 'model_5',
+	'model_5_cnn_dropout': 'model_5',
 }
 
 networks_base_path = 'data/results/'

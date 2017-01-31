@@ -9,5 +9,6 @@ for ((i = 0; i < 100; i++)); do
 			data/datasets/tobacco/train.txt \
 			$RANDN \
 			data/datasets/tobacco/train_$((i)).txt \
+			data/datasets/tobacco/validate_$((i)).txt \
 			data/datasets/tobacco/test_$((i)).txt
 done
