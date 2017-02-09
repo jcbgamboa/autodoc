@@ -38,7 +38,8 @@ def train_cnn(network_module, network_name,
 		use_mean_image = True,
 		dataset_index = None,
 		custom_train_file = None,
-		custom_validate_file = None):
+		custom_validate_file = None,
+		run_as_caes = False):
 	# ------- Create folder for checkpoints
 	checkpoint_dir = os.path.join(checkpoint_base_path, network_name,
 							dataset, 'cnn')
@@ -75,7 +76,11 @@ def train_cnn(network_module, network_name,
 		cnn = load_model(checkpoint_file)
 		params = network_module.get_cnn_parameters()
 	else:
-		input_layer, net, params = create_cnn(network_module,
+		if (run_as_caes):
+			input_layer, net, params = network_module.get_caes_network()
+		else:
+			input_layer, net, params = create_cnn(
+							network_module,
 							network_name)
 
 		# Add the last layer here because this is dependent on the
@@ -244,7 +249,8 @@ def main():
 			use_mean_image = args.use_mean_image,
 			dataset_index = dataset_index,
 			custom_validate_file = custom_validate_file,
-			custom_train_file = custom_train_file)
+			custom_train_file = custom_train_file,
+			run_as_caes = args.run_as_caes)
 
 	print("Trained for {} epochs.".format(n_training_epochs))
 
@@ -283,6 +289,10 @@ def parse_command_line():
 	parser.add_argument('--use_mean_image', dest='use_mean_image',
 			action='store_true')
 	parser.set_defaults(use_mean_image = False)
+
+	parser.add_argument('--run_as_caes', dest='run_as_caes',
+			action='store_true')
+	parser.set_defaults(run_as_caes = False)
 
 	#parser.add_argument('--custom_test_file', default = 'tobacco',
 	#		metavar = 'custom_test_file', type = str,
