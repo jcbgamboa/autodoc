@@ -2,3 +2,4 @@ data/datasets/*
 .idea/
 *.pyc
 data/
+*.swp
