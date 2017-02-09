@@ -14,7 +14,7 @@ def get_caes_parameters():
 		'activation': 'relu'
 	}
 
-def get_cnn_network(network_name, with_dropout=None):
+def get_cnn_network(network_name, with_dropout=None): #, train_layers=True):
 	print("inside get_cnn_network", network_name)
 	model = load_model(network_name)
 
@@ -28,6 +28,7 @@ def get_cnn_network(network_name, with_dropout=None):
 	input_layer = Input(name = 'input', shape = input_shape)
 
 	x = Convolution2D(name = 'enc_conv2D_1',
+		#trainable = train_layers,
 		weights = model.get_layer('enc_conv2D_1').get_weights(),
 		nb_filter = 96, nb_row = 7, nb_col = 7,
 		activation = params['activation'],
@@ -35,6 +36,7 @@ def get_cnn_network(network_name, with_dropout=None):
 		subsample = (4, 4))(input_layer)
 
 	x = BatchNormalization(name = 'enc_batchNorm_1',
+		#trainable = train_layers,
 		weights = model.get_layer('enc_batchNorm_1').get_weights())(x)
 
 	x = MaxPooling2D(name = 'enc_maxPool_1',
@@ -42,6 +44,7 @@ def get_cnn_network(network_name, with_dropout=None):
 		border_mode = 'same')(x)
 
 	x = Convolution2D(name = 'enc_conv2D_2',
+		#trainable = train_layers,
 		weights = model.get_layer('enc_conv2D_2').get_weights(),
 		nb_filter = 256, nb_row = 5, nb_col = 5,
 		activation = params['activation'],
@@ -49,6 +52,7 @@ def get_cnn_network(network_name, with_dropout=None):
 		subsample = (1, 1))(x)
 
 	x = BatchNormalization(name = 'enc_batchNorm_2',
+		#trainable = train_layers,
 		weights = model.get_layer('enc_batchNorm_2').get_weights())(x)
 
 	x = MaxPooling2D(name = 'enc_maxPool_2',
@@ -56,6 +60,7 @@ def get_cnn_network(network_name, with_dropout=None):
 		border_mode = 'same')(x)
 
 	x = Convolution2D(name = 'enc_conv2D_3',
+		#trainable = train_layers,
 		weights = model.get_layer('enc_conv2D_3').get_weights(),
 		nb_filter = 384, nb_row = 3, nb_col = 3,
 		activation = params['activation'],
@@ -63,9 +68,11 @@ def get_cnn_network(network_name, with_dropout=None):
 		subsample = (1, 1))(x)
 
 	x = BatchNormalization(name = 'enc_batchNorm_3',
+		#trainable = train_layers,
 		weights = model.get_layer('enc_batchNorm_3').get_weights())(x)
 
 	x = Convolution2D(name = 'enc_conv2D_4',
+		#trainable = train_layers,
 		weights = model.get_layer('enc_conv2D_4').get_weights(),
 		nb_filter = 256, nb_row = 3, nb_col = 3,
 		activation = params['activation'],
@@ -73,6 +80,7 @@ def get_cnn_network(network_name, with_dropout=None):
 		subsample = (1, 1))(x)
 
 	x = BatchNormalization(name = 'enc_batchNorm_4',
+		#trainable = train_layers,
 		weights = model.get_layer('enc_batchNorm_4').get_weights())(x)
 
 	x = MaxPooling2D(name = 'enc_maxPool3',
@@ -80,6 +88,7 @@ def get_cnn_network(network_name, with_dropout=None):
 		border_mode = 'same')(x)
 
 	x = BatchNormalization(name = 'enc_batchNorm_5',
+		#trainable = train_layers,
 		weights = model.get_layer('enc_batchNorm_5').get_weights())(x)
 
 	# These are CNN specific

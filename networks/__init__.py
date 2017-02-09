@@ -11,7 +11,10 @@ caes_cnn_map = {
 	'model_5_cnn_nomean': 'model_5',
 
 	'model_6_cnn': 'model_6',
-	'model_6_cnn_dropout': 'model_6'
+	'model_6_cnn_dropout': 'model_6',
+
+	'model_6_cnn_tl': 'model_6',
+	'model_6_cnn_dropout_tl': 'model_6'
 }
 
 networks_base_path = 'data/results/'
