@@ -32,6 +32,23 @@ def create_cnn(network_module, network_name):
 	print ("network_name", network_name)
 	return network_module.get_cnn_network(network_name)
 
+def validate_model(ds_val, cnn, results_file):
+	total_loss = 0
+	total_accuracy = 0
+	for val_b in ds_val:
+		# XXX: Fix this hack
+		# This for is expected to iterate only once!
+		[loss, accuracy] = cnn.test_on_batch(val_b[0], val_b[1])
+		total_loss += loss
+		total_accuracy += accuracy
+
+	print(('Validation: BatchSize: {}; Loss: {}; ' +
+		'Accuracy: {}, Actual Accuracy: {}').format(
+			val_b[0].shape[0], total_loss, total_accuracy,
+			total_accuracy/len(ds_val.data_list)))
+	return total_loss, total_accuracy
+
+
 def train_cnn(network_module, network_name,
 		dataset, checkpoint_every,
 		results_file,
@@ -39,7 +56,8 @@ def train_cnn(network_module, network_name,
 		dataset_index = None,
 		custom_train_file = None,
 		custom_validate_file = None,
-		run_as_caes = False):
+		run_as_caes = False,
+		no_early_stop = False):
 	# ------- Create folder for checkpoints
 	checkpoint_dir = os.path.join(checkpoint_base_path, network_name,
 							dataset, 'cnn')
@@ -74,7 +92,11 @@ def train_cnn(network_module, network_name,
 	params = None
 	if (os.path.exists(checkpoint_file)):
 		cnn = load_model(checkpoint_file)
-		params = network_module.get_cnn_parameters()
+		if (run_as_caes):
+			params = network_module.get_caes_parameters()
+		else:
+			params = network_module.get_cnn_parameters()
+
 	else:
 		if (run_as_caes):
 			input_layer, net, params = network_module.get_caes_network()
@@ -127,6 +149,24 @@ def train_cnn(network_module, network_name,
 				print("Saving checkpoint")
 				cnn.save(checkpoint_file)
 
+				# TODO: Put this entire block into a function
+				[loss, accuracy] = validate_model(ds_val, cnn,
+								results_file)
+
+				# Early stopping
+				if (no_early_stop):
+					cnn.save(results_file)
+					continue
+				elif (accuracy > best_accuracy_so_far):
+					best_accuracy_so_far = accuracy
+					patience = 0
+					print("Saving best model so far")
+					cnn.save(results_file)
+				else:
+					patience += 1
+					if (patience == 100):
+						return epoch
+
 			curr_batch += 1
 			iteration += 1
 
@@ -134,24 +174,22 @@ def train_cnn(network_module, network_name,
 		print("Saving checkpoint")
 		cnn.save(checkpoint_file)
 
-		for val_b in ds_val:
-			# XXX: Fix this hack
-			# This for is expected to iterate only once!
-			[loss, accuracy] = cnn.test_on_batch(val_b[0], val_b[1])
-			print(('Validation: BatchSize: {}; Loss: {}; ' +
-				'Accuracy: {}').format(
-					val_b[0].shape[0], loss, accuracy))
+		[loss, accuracy] = validate_model(ds_val, cnn, results_file)
 
-			# Early stopping
-			if (accuracy > best_accuracy_so_far):
-				best_accuracy_so_far = accuracy
-				patience = 0
-				print("Saving best model so far")
-				cnn.save(results_file)
-			else:
-				patience += 1
-				if (patience == 10):
-					return epoch
+		# Early stopping
+		if (no_early_stop):
+			cnn.save(results_file)
+			continue
+		elif (accuracy > best_accuracy_so_far):
+			best_accuracy_so_far = accuracy
+			patience = 0
+			print("Saving best model so far")
+			cnn.save(results_file)
+		else:
+			patience += 1
+			if (patience == 100):
+				return epoch
+
 
 	cnn.save(results_file)
 	return params['n_epochs']
@@ -250,18 +288,20 @@ def main():
 			dataset_index = dataset_index,
 			custom_validate_file = custom_validate_file,
 			custom_train_file = custom_train_file,
-			run_as_caes = args.run_as_caes)
+			run_as_caes = args.run_as_caes,
+			no_early_stop = args.no_early_stop)
 
 	print("Trained for {} epochs.".format(n_training_epochs))
 
 	cnn = load_model(results_file)
 
 	# ------- Dump results
-	test_data, testL = get_test_data(cnn, args.dataset,
+	if (not args.no_test):
+		test_data, testL = get_test_data(cnn, args.dataset,
 				use_mean_image = args.use_mean_image,
 				custom_test_file = custom_test_file)
 
-	dump_cnn(cnn, args.network_name, results_dir, results_file,
+		dump_cnn(cnn, args.network_name, results_dir, results_file,
 			args.dataset, test_data,
 			testL, args.dataset_index)
 
@@ -293,6 +333,14 @@ def parse_command_line():
 	parser.add_argument('--run_as_caes', dest='run_as_caes',
 			action='store_true')
 	parser.set_defaults(run_as_caes = False)
+
+	parser.add_argument('--no_early_stop', dest='no_early_stop',
+			action='store_true')
+	parser.set_defaults(no_early_stop = False)
+
+	parser.add_argument('--no_test', dest='no_test',
+			action='store_true')
+	parser.set_defaults(no_test = False)
 
 	#parser.add_argument('--custom_test_file', default = 'tobacco',
 	#		metavar = 'custom_test_file', type = str,
